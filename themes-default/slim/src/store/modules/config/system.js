@@ -1,6 +1,4 @@
-import { ADD_CONFIG, ADD_REMOTE_BRANCHES } from '../../mutation-types';
-import { apiRoute } from '../../../api.js';
-
+import { ADD_CONFIG, ADD_REMOTE_BRANCHES, ADD_SHOW_QUEUE_ITEM } from '../../mutation-types';
 /**
  * An object representing a scheduler.
  *
@@ -30,6 +28,7 @@ import { apiRoute } from '../../../api.js';
  */
 
 const state = {
+    configLoaded: false,
     branch: null,
     memoryUsage: null,
     schedulers: [],
@@ -47,6 +46,7 @@ const state = {
         minor: null
     },
     locale: null,
+    timezone: null,
     localUser: null,
     programDir: null,
     dataDir: null,
@@ -54,13 +54,15 @@ const state = {
     appArgs: [],
     webRoot: null,
     runsInDocker: null,
+    newestVersionMessage: null,
     gitRemoteBranches: [],
     cpuPresets: null,
     news: {
         lastRead: null,
         latest: null,
         unread: null
-    }
+    },
+    ffprobeVersion: null
 };
 
 const mutations = {
@@ -88,15 +90,26 @@ const getters = {
 };
 
 const actions = {
-    getGitRemoteBranches(context) {
-        const { commit } = context;
-        return apiRoute('home/branchForceUpdate')
+    getGitRemoteBranches({ rootState, commit }) {
+        return rootState.auth.client.apiRoute('home/branchForceUpdate')
             .then(response => {
                 if (response.data && response.data.branches.length > 0) {
                     commit(ADD_REMOTE_BRANCHES, response.data.branches);
                     return response.data.branches;
                 }
             });
+    },
+    getShowQueue({ rootState, commit }) {
+        return rootState.auth.client.api.get('/config/system/showQueue').then(res => {
+            const showQueue = res.data;
+            const config = { showQueue };
+            commit(ADD_CONFIG, { section: 'system', config });
+            return showQueue;
+        });
+    },
+    updateQueueItemShow({ commit }, queueItem) {
+        // Update store's show queue item. (provided through websocket)
+        return commit(ADD_SHOW_QUEUE_ITEM, queueItem);
     }
 
 };

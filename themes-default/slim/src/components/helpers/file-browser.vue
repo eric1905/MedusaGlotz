@@ -9,9 +9,9 @@
             </div>
         </div>
 
-        <div ref="fileBrowserDialog" class="fileBrowserDialog" style="display: none;" />
+        <div ref="fileBrowserDialog" class="fileBrowserDialog" />
         <input ref="fileBrowserSearchBox" @keyup.enter="browse($event.target.value)" :value="currentPath" type="text" class="form-control" style="display: none;">
-        <ul ref="fileBrowserFileList" style="display: none;">
+        <ul ref="fileBrowserFileList">
             <li v-for="file in files" :key="file.name" class="ui-state-default ui-corner-all">
                 <a @mouseover="toggleFolder(file, $event)" @mouseout="toggleFolder(file, $event)" @click="fileClicked(file)">
                     <span :class="'ui-icon ' + (file.isFile ? 'ui-icon-blank' : 'ui-icon-folder-collapsed')" /> {{ file.name }}
@@ -21,8 +21,7 @@
     </div>
 </template>
 <script>
-import { apiRoute } from '../../api';
-
+import { mapState } from 'vuex';
 export default {
     name: 'file-browser',
     props: {
@@ -112,6 +111,9 @@ export default {
         }
     },
     computed: {
+        ...mapState({
+            client: state => state.auth.client
+        }),
         storedPath: {
             // Interact with localStorage, if applicable
             get() {
@@ -166,7 +168,7 @@ export default {
                 path,
                 includeFiles: Number(includeFiles)
             };
-            apiRoute.get(url, { params }).then(response => {
+            this.client.apiRoute.get(url, { params }).then(response => {
                 const { data } = response;
 
                 this.currentPath = data.shift().currentPath;
@@ -200,7 +202,6 @@ export default {
                     autoOpen: false
                 });
 
-                fileBrowserSearchBox.removeAttribute('style');
                 vm.fileBrowserDialog // This is a jQuery object
                     .append(fileBrowserSearchBox);
                 fileBrowser(fileBrowserSearchBox, true)
@@ -232,7 +233,6 @@ export default {
             // Set lastPath so we can reset currentPath if we cancel dialog
             vm.lastPath = vm.currentPath;
 
-            fileBrowserFileList.removeAttribute('style');
             vm.fileBrowserDialog // This is a jQuery object
                 .append(fileBrowserFileList);
         },

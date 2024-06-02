@@ -7,6 +7,7 @@ from builtins import str
 
 from medusa.app import app
 from medusa.indexers.glotz.api import GLOTZ
+from medusa.indexers.imdb.api import Imdb
 from medusa.indexers.tmdb.api import Tmdb
 from medusa.indexers.tvdbv2.api import TVDBv2
 from medusa.indexers.tvmaze.api import TVmaze
@@ -33,15 +34,21 @@ INDEXER_TVRAGE = 2  # Must keep
 INDEXER_TVMAZE = 3
 INDEXER_TMDB = 4
 INDEXER_GLOTZ = 5
-EXTERNAL_IMDB = 10
+# FIXME: Change all references to EXTERNAL_IMDB to INDEXER_IMDB
+INDEXER_IMDB = EXTERNAL_IMDB = 10
 EXTERNAL_ANIDB = 11
 EXTERNAL_TRAKT = 12
+EXTERNAL_ANILIST = 13
 
-EXTERNAL_MAPPINGS = {EXTERNAL_IMDB: 'imdb_id', EXTERNAL_ANIDB: 'anidb_id',
-                     INDEXER_TVRAGE: 'tvrage_id', EXTERNAL_TRAKT: 'trakt_id'}
+EXTERNAL_MAPPINGS = {
+    EXTERNAL_ANIDB: 'anidb_id',
+    INDEXER_TVRAGE: 'tvrage_id',
+    EXTERNAL_TRAKT: 'trakt_id',
+    EXTERNAL_ANILIST: 'anilist_id'
+}
 
 # trakt indexer name vs Medusa indexer
-TRAKT_INDEXERS = {'tvdb': INDEXER_TVDBV2, 'tmdb': INDEXER_TMDB, 'imdb': EXTERNAL_IMDB, 'trakt': EXTERNAL_TRAKT}
+TRAKT_INDEXERS = {'tvdb': INDEXER_TVDBV2, 'tmdb': INDEXER_TMDB, 'imdb': INDEXER_IMDB, 'trakt': EXTERNAL_TRAKT}
 
 STATUS_MAP = {
     'Continuing': [
@@ -102,8 +109,8 @@ indexerConfig = {
         'xem_mapped_to': INDEXER_TVDBV2,
         'icon': 'tvmaze16.png',
         'scene_loc': '{base_url}/scene_exceptions/scene_exceptions_tvmaze.json'.format(base_url=app.BASE_PYMEDUSA_URL),
-        'show_url': 'http://www.tvmaze.com/shows/',
-        'base_url': 'http://api.tvmaze.com/',
+        'show_url': 'https://www.tvmaze.com/shows/',
+        'base_url': 'https://api.tvmaze.com/',
         'mapped_to': 'tvmaze_id',  # The attribute to which other indexers can map there tvmaze id to
         'identifier': 'tvmaze',  # Also used as key for the custom scenename exceptions. (_get_custom_exceptions())
     },
@@ -141,6 +148,24 @@ indexerConfig = {
         'show_url': 'https://www.glotz.info/show/',
         'mapped_to': 'tvdb_id',  # The attribute to which other indexers can map there thetvdb id to
         'identifier': 'glotz',  # Also used as key for the custom scenename exceptions. (_get_custom_exceptions())
+    },
+    INDEXER_IMDB: {
+        'enabled': True,
+        'id': INDEXER_IMDB,
+        'name': 'IMDb',
+        'module': Imdb,
+        'api_params': {
+            'language': 'en',
+            'use_zip': True,
+            'session': IndexerSession(cache_control={'cache_etags': False}),
+        },
+        'xem_mapped_to': INDEXER_TVDBV2,
+        'icon': 'imdb16.png',
+        'scene_loc': '{base_url}/scene_exceptions/scene_exceptions_imdb.json'.format(base_url=app.BASE_PYMEDUSA_URL),
+        'show_url': 'http://www.imdb.com/title/tt',
+        'base_url': 'https://v2.sg.media-imdb.com',
+        'mapped_to': 'imdb_id',  # The attribute to which other indexers can map their imdb id to
+        'identifier': 'imdb',  # Also used as key for the custom scenename exceptions. (_get_custom_exceptions())
     }
 }
 
@@ -166,6 +191,7 @@ def create_config_json(indexer):
 
 
 def get_indexer_config():
+    """Create a per indexer and main indexer config, used by the apiv2."""
     indexers = {
         indexerConfig[indexer]['identifier']: create_config_json(indexerConfig[indexer]) for indexer in indexerConfig
     }

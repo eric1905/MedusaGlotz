@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import json
 import logging
+import re
 from builtins import object
 
 from medusa import app, common
@@ -19,7 +20,9 @@ log.logger.addHandler(logging.NullHandler())
 class Notifier(object):
     """Slack notifier class."""
 
-    def notify_snatch(self, title, message):
+    WEBHOOK_PATTERN = r'https://hooks\.slack\.com/services/.*'
+
+    def notify_snatch(self, title, message, **kwargs):
         """
         Send a notification to a Slack channel when an episode is snatched.
 
@@ -85,12 +88,19 @@ class Notifier(object):
         """
         return self._notify_slack('This is a test notification from Medusa', force=True, webhook=slack_webhook)
 
+    def is_valid_webhook(self, url):
+        """Determine if a given webhook URL matches the predefined pattern."""
+        return re.match(self.WEBHOOK_PATTERN, url) is not None
+
     def _send_slack(self, message=None, webhook=None):
         """Send the http request using the Slack webhook."""
         webhook = webhook or app.SLACK_WEBHOOK
+        if not self.is_valid_webhook(webhook):
+            log.warning(f'The webhook URL ({webhook}) you provided is not valid')
+            return False
 
         log.info('Sending slack message: {message}', {'message': message})
-        log.info('Sending slack message  to url: {url}', {'url': webhook})
+        log.info('Sending slack message to url: {url}', {'url': webhook})
 
         headers = {'Content-Type': 'application/json'}
         data = {

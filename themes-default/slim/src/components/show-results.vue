@@ -10,23 +10,30 @@
                         <span>{{loadingMessage}}</span>
                     </template>
                 </div>
-                <vue-good-table v-show="show.id.slug"
-                                ref="vgt-show-results"
-                                :columns="columns"
-                                :rows="combinedResults"
-                                :search-options="{
-                                    enabled: false
-                                }"
-                                :sort-options="{
-                                    enabled: true,
-                                    initialSortBy: getSortBy('quality', 'desc')
-                                }"
-                                :column-filter-options="{
-                                    enabled: true
-                                }"
-                                :row-style-class="rowStyleClassFn"
-                                styleClass="vgt-table condensed"
-                                @on-sort-change="saveSorting"
+                <vue-good-table
+                    v-show="show.id.slug"
+                    ref="vgt-show-results"
+                    :columns="columns"
+                    :rows="combinedResults"
+                    :search-options="{
+                        enabled: false
+                    }"
+                    :sort-options="{
+                        enabled: true,
+                        initialSortBy: getSortBy('quality', 'desc')
+                    }"
+                    :column-filter-options="{
+                        enabled: true
+                    }"
+                    :row-style-class="rowStyleClassFn"
+                    styleClass="vgt-table condensed"
+                    :pagination-options="{
+                        enabled: true,
+                        perPage: getPaginationPerPage(),
+                        perPageDropdown
+                    }"
+                    @on-per-page-change="updatePaginationPerPage($event.currentPerPage)"
+                    @on-sort-change="saveSorting"
                 >
                     <template slot="table-row" slot-scope="props">
                         <span v-if="props.column.label === 'Provider'" class="align-center">
@@ -74,7 +81,6 @@
                     <div id="no-result" slot="emptystate">
                         No search results available
                     </div>
-
                 </vue-good-table>
             </div>
         </div>
@@ -82,7 +88,6 @@
 </template>
 <script>
 
-import { apiRoute } from '../api';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import { VueGoodTable } from 'vue-good-table';
 import { manageCookieMixin } from '../mixins/manage-cookie';
@@ -124,27 +129,53 @@ export default {
     },
     data() {
         const { getCookie } = this;
+        const perPageDropdown = [25, 50, 100, 250, 500];
+        const getPaginationPerPage = () => {
+            const rows = getCookie('pagination-perPage');
+            if (!rows) {
+                return 50;
+            }
+
+            if (!perPageDropdown.includes(rows)) {
+                return 500;
+            }
+            return rows;
+        };
         return {
             columns: [{
                 label: 'Release',
                 field: 'release',
                 tdClass: 'release',
+                filterOptions: {
+                    enabled: true
+                },
                 hidden: getCookie('Release')
             },
             {
                 label: 'Group',
                 field: 'releaseGroup',
+                filterOptions: {
+                    enabled: true
+                },
+                width: '0',
                 hidden: getCookie('Group')
             },
             {
                 label: 'Provider',
                 field: 'provider.name',
+                filterOptions: {
+                    enabled: true
+                },
+                width: '8rem',
                 hidden: getCookie('Provider')
             },
             {
                 label: 'Quality',
                 field: 'quality',
                 type: 'number',
+                filterOptions: {
+                    customFilter: true
+                },
                 hidden: getCookie('Quality')
             },
             {
@@ -199,7 +230,9 @@ export default {
                 sortable: false
             }],
             loading: false,
-            loadingMessage: ''
+            loadingMessage: '',
+            perPageDropdown,
+            getPaginationPerPage
         };
     },
     async mounted() {
@@ -220,7 +253,8 @@ export default {
             search: state => state.config.search,
             providers: state => state.provider.providers,
             queueitems: state => state.queue.queueitems,
-            history: state => state.history.episodeHistory
+            history: state => state.history.episodeHistory,
+            client: state => state.auth.client
         }),
         ...mapGetters({
             fuzzyParseDateTime: 'fuzzyParseDateTime',
@@ -232,7 +266,7 @@ export default {
             let results = [];
 
             const getLastHistoryStatus = result => {
-                const sortedHistory = episodeHistory.sort(item => item.actionDate).reverse();
+                const sortedHistory = episodeHistory.slice().sort(item => item.actionDate).reverse();
                 for (const historyRow of sortedHistory) {
                     if (historyRow.resource === result.release && historyRow.size === result.size) {
                         return historyRow.statusName.toLocaleLowerCase();
@@ -295,9 +329,14 @@ export default {
             // Remove the element from the DOM
             this.$el.remove();
         },
-        getProviderResults() {
+        async getProviderResults() {
             const { episode, getProviderCacheResults, season, show } = this;
-            getProviderCacheResults({ showSlug: show.id.slug, season, episode });
+            this.loading = true;
+            this.loadingMessage = 'Refreshing results from cache';
+            await getProviderCacheResults({ showSlug: show.id.slug, season, episode });
+            setTimeout(() => {
+                this.loading = false;
+            }, 1000);
         },
         forceSearch() {
             const { episode, episodeSlug, season, show } = this;
@@ -311,7 +350,7 @@ export default {
 
             this.loading = true;
             this.loadingMessage = 'Queue search...';
-            api.put('search/manual', data) // eslint-disable-line no-undef
+            this.client.api.put('search/manual', data) // eslint-disable-line no-undef
                 .then(() => {
                     console.info(`Queued search for show: ${show.id.slug} season: ${season}, episode: ${episode}`);
                     this.loadingMessage = 'Queued search...';
@@ -353,7 +392,7 @@ export default {
             const { layout } = this;
             evt.target.src = `images/loading16-${layout.themeName}.gif`;
             try {
-                const response = await apiRoute('home/pickManualSearch', { params: { provider: result.provider.id, identifier: result.identifier } });
+                const response = await this.client.apiRoute('home/pickManualSearch', { params: { provider: result.provider.id, identifier: result.identifier } });
                 if (response.data.result === 'success') {
                     evt.target.src = 'images/save.png';
                 } else {
@@ -363,6 +402,11 @@ export default {
                 console.error(String(error));
                 evt.target.src = 'images/no16.png';
             }
+        },
+        updatePaginationPerPage(rows) {
+            const { setCookie } = this;
+            this.paginationPerPage = rows;
+            setCookie('pagination-perPage', rows);
         }
     },
     watch: {
@@ -417,6 +461,4 @@ export default {
 #no-result {
     color: rgb(255, 255, 255);
 }
-
-@import '../style/v-tooltip.css';
 </style>

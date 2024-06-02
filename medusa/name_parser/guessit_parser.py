@@ -59,16 +59,18 @@ allowed_countries = [
     'gb',
 ]
 
-series_re = re.compile(r'^(?P<series>.*?)(?: \(?(?:(?P<year>\d{4})|(?P<country>[A-Z]{2}))\)?)?$')
+series_re = re.compile(r'^(?P<series>.*?)(?: ?(?:(?P<year>\(\d{4}\))|(?P<country>[A-Z]{2}))?)?$')
 
 
-def guessit(name, options=None):
+def guessit(name, options=None, cached=True):
     """Guess the episode information from a given release name.
 
     :param name: the release name
     :type name: str
     :param options:
     :type options: dict
+    :param cached:
+    :type cached: Boolean
     :return: the guessed properties
     :rtype: dict
     """
@@ -81,10 +83,14 @@ def guessit(name, options=None):
                               allowed_languages=allowed_languages,
                               allowed_countries=allowed_countries))
 
-    result = guessit_cache.get_or_invalidate(name, final_options)
+    result = None
+    if cached:
+        result = guessit_cache.get_or_invalidate(name, final_options)
     if not result:
+        log.debug('New guessit parse for item {name}', {'name': name})
         result = default_api.guessit(name, options=final_options)
-        guessit_cache.add(name, result)
+        # We don't want to cache at this point. As this is a bare guessit result.
+        # Meaning we haven't been able to calculate any season scene exception at this point.
 
     result['parsing_time'] = time() - start_time
     return result
@@ -103,20 +109,42 @@ def get_expected_titles(show_list):
     """
     expected_titles = []
     for show in show_list:
-        exceptions = {show.name}.union({alias.title for alias in show.aliases})
+        show_title = show.name
+        exceptions = {alias.title for alias in show.aliases}
         for exception in exceptions:
+            # Do not add only numbers to expected titles.
             if exception.isdigit():
-                # do not add numbers to expected titles.
                 continue
 
             match = series_re.match(exception)
             if not match:
                 continue
 
-            if not any(char.isdigit() or char == '-' for char in exception):
+            # Add when show exception has a year (without brackets),
+            # a number or '-' in its title.
+            if any(char.isdigit() or char == '-' for char in match.group(1)):
+                expected_titles.append(exception)
                 continue
 
-            expected_titles.append(exception)
+            # Add when show name is the same as exception,
+            # to allow an explicit match.
+            if show_title.casefold() == exception.casefold():
+                expected_titles.append(exception)
+                continue
+
+        # Do not add only numbers to expected titles.
+        if show_title.isdigit():
+            continue
+
+        match = series_re.match(show_title)
+        if not match:
+            continue
+
+        # Add when show exception has a year (without brackets),
+        # a number or '-' in its title.
+        if any(char.isdigit() or char == '-' for char in match.group(1)):
+            expected_titles.append(show_title)
+            continue
 
     return expected_titles
 
@@ -135,7 +163,7 @@ class GuessItCache(BaseCache):
             self.invalidation_object = obj
 
         if self.invalidation_object == obj:
-            log.debug('Using guessit cache item for {name}', {'name': name})
+            log.debug('Trying guessit cache for item {name}', {'name': name})
             return self.get(name)
 
         log.debug('GuessIt cache was cleared due to invalidation object change: previous={previous} new={new}',

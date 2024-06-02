@@ -31,7 +31,9 @@ const state = {
             seasonFolders: null,
             sports: null,
             subtitlesEnabled: null,
-            airdateOffset: null
+            airdateOffset: null,
+            templates: null,
+            searchTemplates: []
         },
         countries: null,
         genres: [],
@@ -93,7 +95,7 @@ const state = {
 
         // Seasons array is added to the show object under this query,
         // but we currently check to see if this property is defined before fetching the show with `?episodes=true`.
-        // seasons: [],
+        seasons: [],
         episodeCount: null
     },
     provider: {

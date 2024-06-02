@@ -5,7 +5,7 @@ const VueLoaderPlugin = require('vue-loader/lib/plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const FileManagerPlugin = require('filemanager-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const TerserJSPlugin = require('terser-webpack-plugin');
 
 const pkg = require('./package.json');
@@ -121,7 +121,7 @@ const webpackConfig = (env, mode) => ({
             // as soon as we include more minifiers)
             new TerserJSPlugin({}),
             // Minify css files:
-            new OptimizeCssAssetsPlugin({})
+            new CssMinimizerPlugin({})
         ],
         splitChunks: {
             chunks: 'all',
@@ -210,11 +210,21 @@ const webpackConfig = (env, mode) => ({
                 ]
             },
             {
-                test: /\.(woff2?|ttf|eot|svg)$/,
-                loader: 'file-loader',
-                options: {
-                    name: '[name].[ext]',
-                    outputPath: 'fonts'
+                test: /\.s[ac]ss$/i,
+                use: [
+                    // Creates `style` nodes from JS strings
+                    'style-loader',
+                    // Translates CSS into CommonJS
+                    'css-loader',
+                    // Compiles Sass to CSS
+                    'sass-loader'
+                ]
+            },
+            {
+                test: /\.(woff(2)?|ttf|eot|svg)$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: './fonts/[name][ext]'
                 }
             }
         ]

@@ -4,6 +4,7 @@
 from __future__ import unicode_literals
 
 import logging
+import re
 from builtins import object
 
 from medusa import app
@@ -33,22 +34,42 @@ class Notifier(object):
     https://discordapp.com
     """
 
-    def _send_discord_msg(self, title, msg, webhook=None, tts=False):
+    WEBHOOK_PATTERN = r'https://discord\.com/api/webhooks/.*'
+
+    def is_valid_webhook(self, url):
+        """Determine if a given webhook URL matches the predefined pattern."""
+        return re.match(self.WEBHOOK_PATTERN, url) is not None
+
+    def _send_discord_msg(self, title, msg, webhook=None, tts=None, override_avatar=None):
         """Collect the parameters and send the message to the discord webhook."""
         webhook = app.DISCORD_WEBHOOK if webhook is None else webhook
+        if not self.is_valid_webhook(webhook):
+            msg = f'The webhook URL ({webhook}) you provided is not valid'
+            log.warning(msg)
+            return False, msg
+
         tts = app.DISCORD_TTS if tts is None else tts
+        override_avatar = app.DISCORD_OVERRIDE_AVATAR if override_avatar is None else override_avatar
 
         log.debug('Discord in use with API webhook: {webhook}', {'webhook': webhook})
 
-        message = '{0} : {1}'.format(title, msg)
-
         headers = {'Content-Type': 'application/json'}
         payload = {
-            'content': message,
             'username': app.DISCORD_NAME,
-            'avatar_url': app.DISCORD_AVATAR_URL,
-            'tts': tts
+            'content': '',
+            'tts': tts,
+            'embeds': [{
+                'type': 'rich',
+                'title': '',
+                'description': msg,
+                'footer': {
+                    'text': title
+                }
+            }]
         }
+
+        if override_avatar:
+            payload['avatar_url'] = app.DISCORD_AVATAR_URL
 
         success = False
         try:
@@ -70,12 +91,12 @@ class Notifier(object):
                 else:
                     message = http_status_code.get(error.response.status_code, message)
         except Exception as error:
-            message = 'Error while sending Discord message: {0} '.format(error)
+            message = 'Error while sending Discord message: {0}'.format(error)
         finally:
             log.info(message)
         return success, message
 
-    def notify_snatch(self, title, message):
+    def notify_snatch(self, title, message, **kwargs):
         """
         Send a Discord notification when an episode is snatched.
 
@@ -128,13 +149,16 @@ class Notifier(object):
             title = notifyStrings[NOTIFY_LOGIN]
             self._notify_discord(title, update_text.format(ipaddress))
 
-    def test_notify(self, discord_webhook=None, discord_tts=None):
+    def test_notify(self, discord_webhook=None, discord_tts=None, override_avatar=None):
         """Create the test notification."""
-        return self._notify_discord('test', 'This is a test notification from Medusa', webhook=discord_webhook, tts=discord_tts, force=True)
+        return self._notify_discord(
+            'test', 'This is a test notification from Medusa',
+            webhook=discord_webhook, tts=discord_tts, override_avatar=override_avatar, force=True
+        )
 
-    def _notify_discord(self, title='', message='', webhook=None, tts=False, force=False):
+    def _notify_discord(self, title='', message='', webhook=None, tts=None, override_avatar=None, force=False):
         """Validate if USE_DISCORD or Force is enabled and send."""
         if not app.USE_DISCORD and not force:
             return False
 
-        return self._send_discord_msg(title, message, webhook, tts)
+        return self._send_discord_msg(title, message, webhook, tts, override_avatar)

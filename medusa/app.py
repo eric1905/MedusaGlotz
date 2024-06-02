@@ -36,13 +36,19 @@ class MedusaApp(object):
         self.EXT3_FOLDER = 'ext3'
         self.STATIC_FOLDER = 'static'
         self.UNKNOWN_RELEASE_GROUP = 'Medusa'
+
+        # Backup related
         self.BACKUP_DIR = 'backup'
         self.BACKUP_FILENAME_PREFIX = 'backup'
         self.BACKUP_FILENAME = self.BACKUP_FILENAME_PREFIX + '-{timestamp}.zip'
+        self.BACKUP_CACHE_DB = None
+        self.BACKUP_CACHE_FILES = None
+
         self.LEGACY_DB = 'sickbeard.db'
         self.APPLICATION_DB = 'main.db'
         self.FAILED_DB = 'failed.db'
         self.CACHE_DB = 'cache.db'
+        self.RECOMMENDED_DB = 'recommended.db'
         self.LOG_FILENAME = 'application.log'
         self.CONFIG_INI = 'config.ini'
         self.GIT_ORG = 'pymedusa'
@@ -57,6 +63,7 @@ class MedusaApp(object):
         self.SUBTITLES_URL = '{0}/wiki/Subtitle%20Scripts'.format(self.APPLICATION_URL)
         self.RARBG_APPID = 'medusa'
         self.SECURE_TOKEN = 'medusa_user'
+        self.XEM_URL = 'https://thexem.info'
 
         # static configuration
         self.LOCALE = None, None
@@ -72,7 +79,7 @@ class MedusaApp(object):
         self.CONFIG_FILE = None
 
         # This is the version of the config we EXPECT to find
-        self.CONFIG_VERSION = 11
+        self.CONFIG_VERSION = 12
 
         # Default encryption version (0 for None)
         self.ENCRYPTION_VERSION = 0
@@ -101,6 +108,9 @@ class MedusaApp(object):
         self.backlog_search_scheduler = None
         self.show_update_scheduler = None
         self.version_check_scheduler = None
+        self.generic_queue_scheduler = None
+        self.recommended_show_update_queue = None
+        self.recommended_show_update_scheduler = None
         self.show_queue_scheduler = None
         self.search_queue_scheduler = None
         self.forced_search_queue_scheduler = None
@@ -135,9 +145,6 @@ class MedusaApp(object):
         self.GIT_REMOTE = ''
         self.GIT_REMOTE_URL = ''
         self.CUR_COMMIT_BRANCH = ''
-        self.GIT_AUTH_TYPE = 0
-        self.GIT_USERNAME = None
-        self.GIT_PASSWORD = None
         self.GIT_TOKEN = None
         self._GIT_PATH = ''
         self.DEVELOPER = False
@@ -228,6 +235,7 @@ class MedusaApp(object):
         self.METADATA_WDTV = []
         self.METADATA_TIVO = []
         self.METADATA_MEDE8ER = []
+        self.METADATA_PLEX = []
 
         self.QUALITY_DEFAULT = None
         self.STATUS_DEFAULT = None
@@ -268,6 +276,8 @@ class MedusaApp(object):
         self.TORRENT_SEED_ACTION = None
         self.SAVE_MAGNET_FILE = False
         self._TORRENT_DIR = None
+        self._RSS_DIR = None
+        self.RSS_MAX_ITEMS = 100
         self._DOWNLOAD_PROPERS = False
         self._CHECK_PROPERS_INTERVAL = None
         self.PROPERS_SEARCH_DAYS = 2
@@ -281,12 +291,14 @@ class MedusaApp(object):
         self._UPDATE_FREQUENCY = None
         self._BACKLOG_FREQUENCY = None
         self._SHOWUPDATE_HOUR = None
+        self._RECOMMENDED_SHOW_UPDATE_HOUR = None
 
         self.DEFAULT_DOWNLOAD_HANDLER_FREQUENCY = 60
         self.DEFAULT_DAILYSEARCH_FREQUENCY = 40
         self.DEFAULT_BACKLOG_FREQUENCY = 21
         self.DEFAULT_UPDATE_FREQUENCY = 1
         self.DEFAULT_SHOWUPDATE_HOUR = random.randint(2, 4)
+        self.DEFAULT_RECOMMENDED_SHOW_UPDATE_HOUR = random.randint(0, 2)
 
         self.MIN_AUTOPOSTPROCESSOR_FREQUENCY = 1
         self.MIN_DOWNLOAD_HANDLER_FREQUENCY = 5
@@ -305,15 +317,23 @@ class MedusaApp(object):
         self.NO_DELETE = False
         self.KEEP_PROCESSED_DIR = False
         self.PROCESS_METHOD = None
+        # The process methods for torrent and nzb are used by the download handler.
+        self.USE_SPECIFIC_PROCESS_METHOD = False
+        self.PROCESS_METHOD_TORRENT = None
+        self.PROCESS_METHOD_NZB = None
         self.DELRARCONTENTS = False
         self.MOVE_ASSOCIATED_FILES = False
         self.POSTPONE_IF_SYNC_FILES = True
         self.POSTPONE_IF_NO_SUBS = False
         self.NFO_RENAME = True
         self._TV_DOWNLOAD_DIR = None
+        self.DEFAULT_CLIENT_PATH = None
         self.UNPACK = False
         self.SKIP_REMOVED_FILES = False
         self.ALLOWED_EXTENSIONS = ['srt', 'nfo', 'sub', 'idx']
+
+        self.FFMPEG_CHECK_STREAMS = False
+        self.FFMPEG_PATH = ''
 
         self.NZBS = False
         self.NZBS_UID = None
@@ -424,6 +444,7 @@ class MedusaApp(object):
         self.DISCORD_NAME = 'pymedusa'
         self.DISCORD_AVATAR_URL = '{base_url}/images/ico/favicon-144.png'.format(base_url=self.BASE_PYMEDUSA_URL)
         self.DISCORD_TTS = False
+        self.DISCORD_OVERRIDE_AVATAR = False
 
         self.USE_PROWL = False
         self.PROWL_NOTIFY_ONSNATCH = False
@@ -504,6 +525,7 @@ class MedusaApp(object):
         self.TRAKT_REMOVE_SERIESLIST = False
         self.TRAKT_REMOVE_SHOW_FROM_APPLICATION = False
         self.TRAKT_SYNC_WATCHLIST = False
+        self.TRAKT_SYNC_TO_WATCHLIST = False
         self.TRAKT_METHOD_ADD = None
         self.TRAKT_START_PAUSED = False
         self.TRAKT_USE_RECOMMENDED = False
@@ -666,6 +688,10 @@ class MedusaApp(object):
 
         self.NEWZNAB_PROVIDERS = []
 
+        # Prowlarr section.
+        self.PROWLARR_URL = ''
+        self.PROWLARR_APIKEY = ''
+
         self.TORRENTRSS_PROVIDERS = []
 
         self.TORZNAB_PROVIDERS = []
@@ -702,6 +728,18 @@ class MedusaApp(object):
         self.TVDB_API_KEY = 'd99c8e7dac2307355af4ab88720a6c32'
 
         self.GLOTZ_API_KEY = '9DAF49C96CBF8DAC'
+
+        # Recommended Shows settings
+        self.CACHE_RECOMMENDED_SHOWS = True
+        self.CACHE_RECOMMENDED_TRAKT = True
+        self.CACHE_RECOMMENDED_IMDB = True
+        self.CACHE_RECOMMENDED_ANIDB = True
+        self.CACHE_RECOMMENDED_ANILIST = True
+        self.CACHE_RECOMMENDED_TRAKT_LISTS = [
+            'trending', 'popular', 'anticipated', 'collected',
+            'watched', 'played', 'recommendations', 'newshow', 'newseason'
+        ]
+        self.CACHE_RECOMMENDED_PURGE_AFTER_DAYS = 180
 
     def _init_scheduler(self, app_prop=None, scheduler=None, enabled=None):
         from medusa.logger.adapters.style import BraceAdapter
@@ -954,6 +992,16 @@ class MedusaApp(object):
         self.handle_prop('TORRENT_DIR', value)
 
     @property
+    def RSS_DIR(self):
+        """Return app.RSS_DIR."""
+        return self._RSS_DIR
+
+    @RSS_DIR.setter
+    def RSS_DIR(self, value):
+        """Change RSS_DIR."""
+        self.handle_prop('RSS_DIR', value)
+
+    @property
     def TV_DOWNLOAD_DIR(self):
         """Return app.TV_DOWNLOAD_DIR."""
         return self._TV_DOWNLOAD_DIR
@@ -984,6 +1032,16 @@ class MedusaApp(object):
         self.handle_prop('SHOWUPDATE_HOUR', value)
 
     @property
+    def RECOMMENDED_SHOW_UPDATE_HOUR(self):
+        """Return app.SHOWUPDATE_HOUR."""
+        return self._RECOMMENDED_SHOW_UPDATE_HOUR
+
+    @RECOMMENDED_SHOW_UPDATE_HOUR.setter
+    def RECOMMENDED_SHOW_UPDATE_HOUR(self, value):
+        """Change RECOMMENDED_SHOW_UPDATE_HOUR."""
+        self.handle_prop('RECOMMENDED_SHOW_UPDATE_HOUR', value)
+
+    @property
     def SUBTITLES_FINDER_FREQUENCY(self):
         """Return app.SUBTITLES_FINDER_FREQUENCY."""
         return self._SUBTITLES_FINDER_FREQUENCY
@@ -992,6 +1050,23 @@ class MedusaApp(object):
     def SUBTITLES_FINDER_FREQUENCY(self, value):
         """Change SUBTITLES_FINDER_FREQUENCY."""
         self.handle_prop('SUBTITLES_FINDER_FREQUENCY', value)
+
+    @property
+    def SUBTITLE_SERVICES(self):
+        """Return a list of subtitle services."""
+        from medusa.subtitles import sorted_service_list
+        return sorted_service_list()
+
+    @SUBTITLE_SERVICES.setter
+    def SUBTITLE_SERVICES(self, value):
+        """
+        Save subtitle services.
+
+        The order of available subtitle services and the enabled/disabled providers
+            are fleshed out when saving this app property.
+        """
+        self.SUBTITLES_SERVICES_LIST = [prov['name'] for prov in value]
+        self.SUBTITLES_SERVICES_ENABLED = [int(prov['enabled']) for prov in value]
 
 
 app = MedusaApp()

@@ -5,12 +5,15 @@ from __future__ import unicode_literals
 
 import logging
 from builtins import object
+from json.decoder import JSONDecodeError
 
 from medusa import app
 from medusa.helpers import get_title_without_year
 from medusa.helpers.trakt import create_episode_structure, create_show_structure, get_trakt_user
 from medusa.indexers.utils import get_trakt_indexer
 from medusa.logger.adapters.style import BraceAdapter
+
+from requests.exceptions import RequestException
 
 from trakt import sync, tv
 from trakt.errors import TraktException
@@ -23,7 +26,7 @@ log.logger.addHandler(logging.NullHandler())
 class Notifier(object):
     """A "notifier" for trakt.tv which keeps track of what has and hasn't been added to your library."""
 
-    def notify_snatch(self, title, message):
+    def notify_snatch(self, title, message, **kwargs):
         """Trakt don't support this method."""
         pass
 
@@ -81,7 +84,7 @@ class Notifier(object):
 
                 # update library
                 sync.add_to_collection(data)
-            except TraktException as error:
+            except (TraktException, RequestException, JSONDecodeError) as error:
                 log.warning('Unable to update Trakt: {error!r}', {'error': error})
 
     @staticmethod
@@ -94,7 +97,7 @@ class Notifier(object):
                 result = sync.remove_from_watchlist(trakt_media_object)
             else:
                 result = sync.add_to_watchlist(trakt_media_object)
-        except TraktException as error:
+        except (TraktException, RequestException, JSONDecodeError) as error:
             log.warning('Unable to update Trakt: {error!r}', {'error': error})
             return False
 
@@ -118,7 +121,7 @@ class Notifier(object):
                 result = sync.remove_from_watchlist({'shows': [create_episode_structure(show_obj, episodes)]})
             else:
                 result = sync.add_to_watchlist({'shows': [create_episode_structure(show_obj, episodes)]})
-        except TraktException as error:
+        except (TraktException, RequestException, JSONDecodeError) as error:
             log.warning('Unable to update Trakt watchlist: {error!r}', {'error': error})
             return False
 
@@ -140,7 +143,7 @@ class Notifier(object):
         try:
             tv_episode = tv.TVEpisode(show_id, episode.season, episode.episode)
             tv_episode.add_to_watchlist()
-        except TraktException as error:
+        except (TraktException, RequestException, JSONDecodeError) as error:
             log.warning('Unable to add episode to watchlist: {error!r}', {'error': error})
 
     @staticmethod
@@ -165,6 +168,6 @@ class Notifier(object):
                     return "Trakt blacklist doesn't exists"
             else:
                 return 'Test notice sent successfully to Trakt'
-        except TraktException as error:
+        except (TraktException, RequestException, JSONDecodeError) as error:
             log.warning('Unable to test TRAKT: {error!r}', {'error': error})
             return 'Test notice failed to Trakt: {0!r}'.format(error)

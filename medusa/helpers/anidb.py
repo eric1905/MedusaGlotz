@@ -11,8 +11,7 @@ from medusa import app
 from medusa.cache import anidb_cache
 from medusa.helper.exceptions import AnidbAdbaConnectionException
 from medusa.logger.adapters.style import BraceAdapter
-
-import six
+from medusa.show.recommendations.recommended import create_key
 
 log = BraceAdapter(logging.getLogger(__name__))
 log.logger.addHandler(logging.NullHandler())
@@ -48,15 +47,6 @@ def set_up_anidb_connection():
     return app.ADBA_CONNECTION.authed()
 
 
-def create_key(namespace, fn, **kw):
-    def generate_key(*args, **kw):
-        show_key = namespace + '|' + args[0]
-        if six.PY2:
-            return show_key.encode('utf-8')
-        return show_key
-    return generate_key
-
-
 @anidb_cache.cache_on_arguments(namespace='anidb', function_key_generator=create_key)
 def get_release_groups_for_anime(series_name):
     """Get release groups for an anidb anime."""
@@ -72,7 +62,7 @@ def get_release_groups_for_anime(series_name):
     return groups
 
 
-@anidb_cache.cache_on_arguments()
+@anidb_cache.cache_on_arguments(namespace='anidb', function_key_generator=create_key)
 def get_short_group_name(release_group):
     short_group_list = []
 

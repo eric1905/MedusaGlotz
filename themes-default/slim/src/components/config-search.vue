@@ -24,7 +24,7 @@
 
                                     <div v-show="search.general.downloadPropers">
                                         <config-template label="Check propers every" label-for="check_propers_interval">
-                                            <select id="check_propers_interval" name="check_propers_interval" v-model="search.general.checkPropersInterval" class="form-control input-sm">
+                                            <select id="check_propers_interval" name="check_propers_interval" v-model="search.general.checkPropersInterval" class="form-control input-sm max-input350">
                                                 <option v-for="option in checkPropersIntervalLabels" :value="option.value" :key="option.value">
                                                     {{option.text}}
                                                 </option>
@@ -137,7 +137,7 @@
 
                                     <div v-show="clients.nzb.enabled">
                                         <config-template label-for="nzb_method" label="Send .nzb files to">
-                                            <select v-model="clients.nzb.method" name="nzb_method" id="nzb_method" class="form-control input-sm">
+                                            <select v-model="clients.nzb.method" name="nzb_method" id="nzb_method" class="form-control input-sm max-input350">
                                                 <option v-for="(client, name) in clientsConfig.nzb" :value="name" :key="name">{{client.title}}</option>
                                             </select>
                                         </config-template>
@@ -148,6 +148,14 @@
                                                 <p><b>.nzb</b> files are stored at this location for external software to find and use</p>
                                             </div>
                                         </config-template>
+
+                                        <div v-if="clients.nzb.method" v-show="clients.nzb.method === 'rss'">
+                                            <config-template label-for="rss_dir" label="Location to store RSS xml">
+                                                <file-browser name="rss_dir" title="Select RSS file location" :initial-dir="clients.rss.dir" @update="clients.rss.dir = $event" />
+                                                <p><b>medusa.rss</b> is stored at this location</p>
+                                            </config-template>
+                                            <config-textbox-number :min="1" :step="1" :max="500" v-model.number="clients.rss.max_items" label="Maximum number of items in RSS feed" id="rss_max_items" :explanations="['Oldest items will be removed to make space for new items']" />
+                                        </div>
 
                                         <div v-if="clients.nzb.method" v-show="clients.nzb.method === 'sabnzbd'" id="sabnzbd_settings">
 
@@ -187,7 +195,7 @@
                                             <config-textbox v-model="clients.nzb.nzbget.categoryAnimeBacklog" label="Use NZBget category for anime (backlog episodes)" id="nzbget_category_anime_backlog" :explanations="['send anime downloads of old episodes marked this category (e.g. anime)']" />
 
                                             <config-template label-for="nzbget_priority" label="NZBget priority">
-                                                <select name="nzbget_priority" id="nzbget_priority" v-model="clients.nzb.nzbget.priority" class="form-control input-sm">
+                                                <select name="nzbget_priority" id="nzbget_priority" v-model="clients.nzb.nzbget.priority" class="form-control input-sm max-input350">
                                                     <option v-for="option in nzbGetPriorityOptions" :value="option.value" :key="option.value">{{option.text}}</option>
                                                 </select>
                                                 <span>priority for daily snatches (no backlog)</span>
@@ -224,7 +232,7 @@
                                     <div v-show="clients.torrents.enabled">
 
                                         <config-template label-for="torrent_method" label="Send .torrent files to">
-                                            <select v-model="clients.torrents.method" name="torrent_method" id="torrent_method" class="form-control input-sm">
+                                            <select v-model="clients.torrents.method" name="torrent_method" id="torrent_method" class="form-control input-sm max-input350">
                                                 <option v-for="(client, name) in clientsConfig.torrent" :value="name" :key="name">{{client.title}}</option>
                                             </select>
                                         </config-template>
@@ -241,7 +249,15 @@
                                             </config-toggle-slider>
                                         </div>
 
-                                        <div v-if="clients.torrents.method" v-show="clients.torrents.method !== 'blackhole'">
+                                        <div v-if="clients.torrents.method" v-show="clients.torrents.method === 'rss'">
+                                            <config-template label-for="rss_dir" label="Location to store RSS xml">
+                                                <file-browser name="rss_dir" title="Select RSS file location" :initial-dir="clients.rss.dir" @update="clients.rss.dir = $event" />
+                                                <p><b>medusa.rss</b> is stored at this location</p>
+                                            </config-template>
+                                            <config-textbox-number :min="1" :step="1" :max="500" v-model.number="clients.rss.max_items" label="Maximum number of items in RSS feed" id="rss_max_items" :explanations="['Oldest items will be removed to make space for new items']" />
+                                        </div>
+
+                                        <div v-if="clients.torrents.method" v-show="clients.torrents.method !== 'blackhole' && clients.torrents.method !== 'rss'">
 
                                             <config-textbox
                                                 v-model="clients.torrents.host"
@@ -255,13 +271,13 @@
                                                 v-show="clients.torrents.method === 'transmission'"
                                                 v-model="clients.torrents.rpcUrl"
                                                 :label="clientsConfig.torrent[clients.torrents.method].shortTitle || `${clientsConfig.torrent[clients.torrents.method].title} RPC URL`"
-                                                id="rpcurl_title" validate-uri
+                                                id="rpcurl_title"
                                             >
                                                 <p id="rpcurl_desc_">The path without leading and trailing slashes (e.g. transmission)</p>
                                             </config-textbox>
 
                                             <config-template v-show="!authTypeIsDisabled" label-for="torrent_auth_type" label="Http Authentication">
-                                                <select v-model="clients.torrents.authType" name="torrent_auth_type" id="torrent_auth_type" class="form-control input-sm">
+                                                <select v-model="clients.torrents.authType" name="torrent_auth_type" id="torrent_auth_type" class="form-control input-sm max-input350">
                                                     <option v-for="(title, name) in httpAuthTypes" :value="name" :key="name">{{title}}</option>
                                                 </select>
                                             </config-template>
@@ -371,7 +387,6 @@
 </template>
 
 <script>
-import { apiRoute } from '../api.js';
 import { mapActions, mapState } from 'vuex';
 import {
     AppLink,
@@ -396,7 +411,6 @@ export default {
     },
     data() {
         return {
-            configLoaded: false,
             checkPropersIntervalLabels: [
                 { text: '24 hours', value: 'daily' },
                 { text: '4 hours', value: '4h' },
@@ -419,6 +433,9 @@ export default {
                 torrent: {
                     blackhole: {
                         title: 'Black hole'
+                    },
+                    rss: {
+                        title: 'RSS Feed'
                     },
                     utorrent: {
                         title: 'uTorrent',
@@ -501,6 +518,9 @@ export default {
                     blackhole: {
                         title: 'Black hole'
                     },
+                    rss: {
+                        title: 'RSS Feed'
+                    },
                     nzbget: {
                         title: 'NZBget',
                         description: 'NZBget RPC host name and port number (not NZBgetweb!) (e.g. localhost:6789)',
@@ -525,7 +545,8 @@ export default {
         ...mapState({
             clients: state => state.config.clients,
             search: state => state.config.search,
-            system: state => state.config.system
+            system: state => state.config.system,
+            client: state => state.auth.client
         }),
         torrentUsernameIsDisabled() {
             const { clients } = this;
@@ -581,7 +602,7 @@ export default {
                 username,
                 password
             };
-            const resp = await apiRoute.get('home/testTorrent', { params });
+            const resp = await this.client.apiRoute.get('home/testTorrent', { params });
 
             this.clientsConfig.torrent[method].testStatus = resp.data;
         },
@@ -599,7 +620,7 @@ export default {
                 password,
                 use_https: useHttps // eslint-disable-line camelcase
             };
-            const resp = await apiRoute.get('home/testNZBget', { params });
+            const resp = await this.client.apiRoute.get('home/testNZBget', { params });
 
             this.clientsConfig.nzb.nzbget.testStatus = resp.data;
         },
@@ -617,7 +638,7 @@ export default {
                 password,
                 apikey: apiKey
             };
-            const resp = await apiRoute.get('home/testSABnzbd', { params });
+            const resp = await this.client.apiRoute.get('home/testSABnzbd', { params });
 
             this.clientsConfig.nzb.sabnzbd.testStatus = resp.data;
         },

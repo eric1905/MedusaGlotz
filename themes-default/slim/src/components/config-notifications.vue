@@ -40,17 +40,10 @@
                                             <config-toggle-slider v-model="notifiers.kodi.cleanLibrary" label="Clean library" id="kodi_clean_library" :explanations="['clean KODI library when replaces a already downloaded episode?']" @change="save()" />
                                             <config-toggle-slider v-model="notifiers.kodi.update.onlyFirst" label="Only update first host" id="kodi_update_onlyfirst" :explanations="['only send library updates/clean to the first active host?']" @change="save()" />
 
-                                            <div class="form-group">
-                                                <div class="row">
-                                                    <label for="kodi_host" class="col-sm-2 control-label">
-                                                        <span>KODI IP:Port</span>
-                                                    </label>
-                                                    <div class="col-sm-10 content">
-                                                        <select-list name="kodi_host" id="kodi_host" :list-items="notifiers.kodi.host" @change="notifiers.kodi.host = $event.map(x => x.value)" />
-                                                        <p>host running KODI (eg. 192.168.1.100:8080)</p>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <config-template label="KODI IP:Port" labelFor="kodi_host">
+                                                <select-list name="kodi_host" id="kodi_host" :list-items="notifiers.kodi.host" @change="notifiers.kodi.host = $event.map(x => x.value)" />
+                                                <p>host running KODI (eg. 192.168.1.100:8080)</p>
+                                            </config-template>
 
                                             <config-textbox v-model="notifiers.kodi.username" label="Username" id="kodi_username" :explanations="['username for your KODI server (blank for none)']" @change="save()" />
                                             <config-textbox v-model="notifiers.kodi.password" type="password" label="Password" id="kodi_password" :explanations="['password for your KODI server (blank for none)']" @change="save()" />
@@ -732,6 +725,7 @@
                                             <config-toggle-slider v-model="notifiers.discord.notifyOnSubtitleDownload" label="Notify on subtitle download" id="discord_notify_onsubtitledownload" :explanations="['send a message when subtitles are downloaded?']" @change="save()" />
                                             <config-textbox v-model="notifiers.discord.webhook" label="Channel webhook" id="discord_webhook" :explanations="['Add a webhook to a channel, use the returned url here']" @change="save()" />
                                             <config-toggle-slider v-model="notifiers.discord.tts" label="Text to speech" id="discord_tts" :explanations="['Use discord text to speech feature']" @change="save()" />
+                                            <config-toggle-slider v-model="notifiers.discord.overrideAvatar" label="Override webhook avatar" id="override_avatar" :explanations="['Override Discords default avatar with a Medusa icon']" @change="save()" />
                                             <config-textbox v-model="notifiers.discord.name" label="Bot username" id="discord_name" :explanations="['Create a username for the Discord Bot to use']" @change="save()" />
 
                                             <div class="testNotification" id="testDiscord-result">Click below to test your settings.</div>
@@ -850,6 +844,7 @@
                                                     <p>method in which to download episodes for new shows.</p>
                                                 </config-template>
 
+                                                <config-toggle-slider v-model="notifiers.trakt.syncToWatchlist" label="Sync medusa shows to your trakt watchlist" id="sync_to_watchlist" :explanations="['Additionallly to adding shows from your watchlist to medusa, add shows from medusa to your watchlist']" @change="save()" />
                                                 <config-toggle-slider v-model="notifiers.trakt.removeWatchlist" label="Remove episode" id="trakt_remove_watchlist" :explanations="['remove an episode from your watchlist after it\'s downloaded.']" @change="save()" />
                                                 <config-toggle-slider v-model="notifiers.trakt.removeSerieslist" label="Remove series" id="trakt_remove_serieslist" :explanations="['remove the whole series from your watchlist after any download.']" @change="save()" />
                                                 <config-toggle-slider v-model="notifiers.trakt.removeShowFromApplication" label="Remove watched show" id="trakt_remove_show_from_application" :explanations="['remove the show from Medusa if it\'s ended and completely watched']" @change="save()" />
@@ -978,7 +973,6 @@
 </template>
 
 <script>
-import { apiRoute } from '../api.js';
 import { mapActions, mapState } from 'vuex';
 import {
     AppLink,
@@ -1069,7 +1063,8 @@ export default {
         ...mapState({
             config: state => state.config.general,
             indexers: state => state.config.indexers,
-            notifiers: state => state.config.notifiers
+            notifiers: state => state.config.notifiers,
+            client: state => state.auth.client
         }),
         traktIndexersOptions() {
             const { indexers } = this;
@@ -1081,7 +1076,6 @@ export default {
             });
         }
     },
-
     beforeMount() {
         // Wait for the next tick, so the component is rendered
         this.$nextTick(() => {
@@ -1124,11 +1118,11 @@ export default {
             }
 
             // Save the list
-            apiRoute.post('home/saveShowNotifyList', form);
+            this.client.apiRoute.postForm('home/saveShowNotifyList', form);
         },
         async prowlUpdateApiKeys(selectedShow) {
             this.prowlSelectedShow = selectedShow;
-            const response = await apiRoute('home/loadShowNotifyLists');
+            const response = await this.client.apiRoute('home/loadShowNotifyLists');
             if (response.data._size > 0) {
                 const list = response.data[selectedShow].prowl_notify_list ? response.data[selectedShow].prowl_notify_list.split(',') : [];
                 this.prowlSelectedShowApiKeys = selectedShow ? list : [];
@@ -1136,7 +1130,7 @@ export default {
         },
         async emailUpdateShowEmail(selectedShow) {
             this.emailSelectedShow = selectedShow;
-            const response = await apiRoute('home/loadShowNotifyLists');
+            const response = await this.client.apiRoute('home/loadShowNotifyLists');
             if (response.data._size > 0) {
                 const list = response.data[selectedShow].list ? response.data[selectedShow].list.split(',') : [];
                 this.emailSelectedShowAdresses = selectedShow ? list : [];
@@ -1153,7 +1147,7 @@ export default {
                 return false;
             }
 
-            const response = await apiRoute('home/getPushbulletDevices', { params: { api: pushbulletApiKey } });
+            const response = await this.client.apiRoute('home/getPushbulletDevices', { params: { api: pushbulletApiKey } });
             const options = [];
 
             const { data } = response;
@@ -1178,7 +1172,7 @@ export default {
                 return false;
             }
 
-            const response = await apiRoute('home/testPushbullet', { params: { api: pushbulletApiKey } });
+            const response = await this.client.apiRoute('home/testPushbullet', { params: { api: pushbulletApiKey } });
             const { data } = response;
 
             if (data) {
@@ -1193,7 +1187,7 @@ export default {
                 return false;
             }
 
-            const response = await apiRoute('home/testJoin', { params: { api: joinApiKey } });
+            const response = await this.client.apiRoute('home/testJoin', { params: { api: joinApiKey } });
             const { data } = response;
 
             if (data) {
@@ -1203,7 +1197,7 @@ export default {
         async twitterStep1() {
             this.twitterTestInfo = MEDUSA.config.layout.loading;
 
-            const response = await apiRoute('home/twitterStep1');
+            const response = await this.client.apiRoute('home/twitterStep1');
             const { data } = response;
             window.open(data);
             this.twitterTestInfo = '<b>Step1:</b> Confirm Authorization';
@@ -1214,7 +1208,7 @@ export default {
             twitter.key = twitterKey;
 
             if (twitter.key) {
-                const response = await apiRoute('home/twitterStep2', { params: { key: twitter.key } });
+                const response = await this.client.apiRoute('home/twitterStep2', { params: { key: twitter.key } });
                 const { data } = response;
                 this.twitterTestInfo = data;
             } else {
@@ -1223,7 +1217,7 @@ export default {
         },
         async twitterTest() {
             try {
-                const response = await apiRoute('home/testTwitter');
+                const response = await this.client.apiRoute('home/testTwitter');
                 const { data } = response;
                 this.twitterTestInfo = data;
             } catch (error) {
@@ -1610,7 +1604,8 @@ export default {
             $('#testDiscord-result').html(MEDUSA.config.layout.loading);
             $.get('home/testDiscord', {
                 discord_webhook: notifiers.discord.webhook, // eslint-disable-line camelcase
-                discord_tts: notifiers.discord.tts // eslint-disable-line camelcase
+                discord_tts: notifiers.discord.tts, // eslint-disable-line camelcase
+                discord_override_avatar: notifiers.discord.overrideAvatar // eslint-disable-line camelcase
             }).done(data => {
                 $('#testDiscord-result').html(data);
                 $('#testDiscord').prop('disabled', false);
@@ -1638,7 +1633,7 @@ export default {
         async TraktRequestDeviceCode() {
             this.traktUserCode = '';
             this.traktRequestAuthenticated = false;
-            const response = await apiRoute('home/requestTraktDeviceCodeOauth');
+            const response = await this.client.apiRoute('home/requestTraktDeviceCodeOauth');
             if (response.data) {
                 this.traktVerificationUrl = response.data.verification_url;
                 window.open(response.data.verification_url, 'popUp', 'toolbar=no, scrollbars=no, resizable=no, top=200, left=200, width=650, height=550');
@@ -1650,7 +1645,7 @@ export default {
         checkTraktAuthenticated() {
             let counter = 0;
             const i = setInterval(() => {
-                apiRoute('home/checkTrakTokenOauth')
+                this.client.apiRoute('home/checkTrakTokenOauth')
                     .then(response => {
                         if (response.data) {
                             this.traktRequestMessage = response.data.result;
@@ -1681,7 +1676,7 @@ export default {
             }
             $('#trakt_blacklist_name').removeClass('warning');
             $('#testTrakt-result').html(MEDUSA.config.layout.loading);
-            apiRoute(`home/testTrakt?blacklist_name=${trakt.trendingBlacklist}`)
+            this.client.apiRoute(`home/testTrakt?blacklist_name=${trakt.trendingBlacklist}`)
                 .then(result => {
                     $('#testTrakt-result').html(result.data);
                     $('#testTrakt').prop('disabled', false);

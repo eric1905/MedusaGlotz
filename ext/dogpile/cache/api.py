@@ -51,6 +51,15 @@ Serializer = Callable[[ValuePayload], bytes]
 Deserializer = Callable[[bytes], ValuePayload]
 
 
+class CantDeserializeException(Exception):
+    """Exception indicating deserialization failed, and that caching
+    should proceed to re-generate a value
+
+    .. versionadded:: 1.2.0
+
+    """
+
+
 class CacheMutex(abc.ABC):
     """Describes a mutexing object with acquire and release methods.
 
@@ -152,7 +161,7 @@ class CacheBackend:
 
     """
 
-    serializer: Union[None, Serializer, staticmethod] = None
+    serializer: Union[None, Serializer] = None
     """Serializer function that will be used by default if not overridden
     by the region.
 
@@ -160,7 +169,7 @@ class CacheBackend:
 
     """
 
-    deserializer: Union[None, Deserializer, staticmethod] = None
+    deserializer: Union[None, Deserializer] = None
     """deserializer function that will be used by default if not overridden
     by the region.
 
@@ -446,10 +455,10 @@ class CacheBackend:
 
 
 class DefaultSerialization:
-    serializer: Union[None, Serializer, staticmethod] = staticmethod(
+    serializer: Union[None, Serializer] = staticmethod(  # type: ignore
         pickle.dumps
     )
-    deserializer: Union[None, Deserializer, staticmethod] = staticmethod(
+    deserializer: Union[None, Deserializer] = staticmethod(  # type: ignore
         pickle.loads
     )
 

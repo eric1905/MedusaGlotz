@@ -17,7 +17,6 @@ from medusa import (
 )
 from medusa.common import cpu_presets
 from medusa.helper.common import convert_size, episode_num
-from medusa.indexers.config import INDEXER_TVDBV2
 from medusa.logger.adapters.style import BraceAdapter
 from medusa.providers.torrent.torrent_provider import TorrentProvider
 
@@ -236,16 +235,19 @@ class BTNProvider(TorrentProvider):
         }
 
         # Search
-        if ep_obj.series.indexer == INDEXER_TVDBV2:
-            params['tvdb'] = self._get_tvdb_id()
+        tvdb_id = self._get_tvdb_id()
+        if tvdb_id is not None:
+            params['tvdb'] = tvdb_id
             searches.append(params)
         else:
+            # Search by name if we don't have tvdb id
+            params['series'] = ep_obj.series.name
+            searches.append(params.copy())
+            # Add scene name exceptions
             name_exceptions = scene_exceptions.get_scene_exceptions(ep_obj.series)
-            name_exceptions.add(ep_obj.series.name)
-            for name in name_exceptions:
-                # Search by name if we don't have tvdb id
-                params['series'] = name
-                searches.append(params)
+            for exception in name_exceptions:
+                params['series'] = exception.title
+                searches.append(params.copy())
 
         # extend air by date searches to include season numbering
         if air_by_date and not season_numbering:
@@ -278,8 +280,8 @@ class BTNProvider(TorrentProvider):
                 log.warning('Provider is currently unavailable. Error: {code} {text}',
                             {'code': code, 'text': message})
             else:
-                log.error('JSON-RPC protocol error while accessing provider. Error: {msg!r}',
-                          {'msg': error.args})
+                log.warning('JSON-RPC protocol error while accessing provider. Error: {msg!r}',
+                            {'msg': error.args})
 
         except (socket.error, ValueError) as error:
             log.warning('Error while accessing provider. Error: {msg!r}', {'msg': error})

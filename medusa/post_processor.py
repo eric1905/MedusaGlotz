@@ -40,6 +40,7 @@ from medusa import (
     notifiers,
 )
 from medusa.common import (
+    ARCHIVED,
     DOWNLOADED,
     Quality,
     SNATCHED,
@@ -53,11 +54,13 @@ from medusa.helper.common import (
 )
 from medusa.helper.exceptions import (
     EpisodeNotFoundException,
+    EpisodePostProcessingAbortException,
     EpisodePostProcessingFailedException,
     ShowDirectoryNotFoundException,
 )
 from medusa.helpers import is_subtitle, verify_freespace
 from medusa.helpers.anidb import set_up_anidb_connection
+from medusa.helpers.ffmpeg import FfMpeg, FfprobeBinaryException
 from medusa.helpers.utils import generate
 from medusa.name_parser.parser import (
     InvalidNameException,
@@ -119,7 +122,7 @@ class PostProcessor(object):
         self.is_priority = is_priority
         self._output = []
         self.version = None
-        self.anidbEpisode = None
+        self.anidb_episode = None
         self.manually_searched = False
         self.info_hash = None
         self.item_resources = OrderedDict([('file name', self.file_name),
@@ -209,7 +212,7 @@ class PostProcessor(object):
         files = self._search_files(file_path, subfolders=subfolders)
 
         # file path to the video file that is being processed (without extension)
-        processed_file_name = os.path.splitext(os.path.basename(file_path))[0].lower() + '.'
+        processed_file_name = os.path.splitext(os.path.basename(file_path))[0].lower()
 
         processed_names = (processed_file_name,)
         processed_names += tuple((_f for _f in (self._rar_basename(file_path, files),) if _f))
@@ -561,12 +564,12 @@ class PostProcessor(object):
         :param file_path: file to add to mylist
         """
         if set_up_anidb_connection():
-            if not self.anidbEpisode:  # seems like we could parse the name before, now lets build the anidb object
-                self.anidbEpisode = self._build_anidb_episode(app.ADBA_CONNECTION, file_path)
+            if not self.anidb_episode:  # seems like we could parse the name before, now lets build the anidb object
+                self.anidb_episode = self._build_anidb_episode(app.ADBA_CONNECTION, file_path)
 
             self.log(u'Adding the file to the anidb mylist', logger.DEBUG)
             try:
-                self.anidbEpisode.add_to_mylist(state=1)  # state = 1 sets the state of the file to "internal HDD"
+                self.anidb_episode.add_to_mylist(state=1)  # state = 1 sets the state of the file to "internal HDD"
             except Exception as e:
                 self.log(u'Exception message: {0!r}'.format(e))
 
@@ -693,7 +696,7 @@ class PostProcessor(object):
 
         # parse the name to break it into show, season, episodes, quality and version
         try:
-            parse_result = NameParser().parse(name)
+            parse_result = NameParser().parse(name, use_cache=False)
         except (InvalidNameException, InvalidShowException) as error:
             self.log(u'{0}'.format(error), logger.DEBUG)
             return to_return
@@ -704,7 +707,7 @@ class PostProcessor(object):
                                         not parse_result.is_anime]):
             try:
                 parse_result.series.erase_cached_parse()
-                parse_result = NameParser(parse_method='anime').parse(name)
+                parse_result = NameParser(parse_method='anime').parse(name, use_cache=False)
             except (InvalidNameException, InvalidShowException) as error:
                 self.log(u'{0}'.format(error), logger.DEBUG)
                 return to_return
@@ -734,9 +737,10 @@ class PostProcessor(object):
         self.is_proper = bool(parse_result.proper_tags)
 
         # if the result is complete set release name
-        if parse_result.series_name and ((parse_result.season_number is not None and parse_result.episode_numbers) or
-                                         parse_result.air_date) and parse_result.release_group:
-
+        if parse_result.series_name and (
+            (parse_result.season_number is not None and parse_result.episode_numbers)
+            or parse_result.air_date
+        ) and parse_result.release_group:
             if not self.release_name:
                 self.release_name = remove_extension(os.path.basename(parse_result.original_name))
 
@@ -918,7 +922,7 @@ class PostProcessor(object):
         self.log(u'Snatch in history: {0}'.format(self.in_history), level)
         self.log(u'Manually snatched: {0}'.format(self.manually_searched), level)
         self.log(u'Info hash: {0}'.format(self.info_hash), level)
-        self.log(u'NZB: {0}'.format(bool(self.nzb_name)), level)
+        self.log(u'Resource name: {0}'.format(self.nzb_name), level)
         self.log(u'Current quality: {0}'.format(Quality.qualityStrings[old_ep_quality]), level)
         self.log(u'New quality: {0}'.format(Quality.qualityStrings[new_ep_quality]), level)
         self.log(u'Proper: {0}'.format(self.is_proper), level)
@@ -1038,11 +1042,26 @@ class PostProcessor(object):
                 self.log(u'File {0} is ignored type, skipping'.format(self.file_path))
                 return False
 
+        ffmpeg = FfMpeg()
+        if app.FFMPEG_CHECK_STREAMS:
+            try:
+                ffmpeg.test_ffprobe_binary()
+                self.log(f'Checking {self.file_path} for minimal one video and audio stream')
+                result = FfMpeg().check_for_video_and_audio_streams(self.file_path)
+            except FfprobeBinaryException:
+                self.log('Cannot access ffprobe binary. Make sure ffprobe is accessable throug your environment variables or configure a path.')
+            else:
+                if not result:
+                    self.log('ffprobe reported an error while checking {file_path} for a video and audio stream. Error: {error}'.format(
+                        file_path=self.file_path, error='No video or audio detected.'), logger.WARNING
+                    )
+                    raise EpisodePostProcessingFailedException(f'ffmpeg detected a corruption in this video file: {self.file_path}')
+
         # reset in_history
         self.in_history = False
 
         # reset the anidb episode object
-        self.anidbEpisode = None
+        self.anidb_episode = None
 
         # try to find the file info
         (series_obj, season, episodes, quality, version) = self._find_info()
@@ -1085,15 +1104,21 @@ class PostProcessor(object):
             self.log(u'Episode has a version in it, using that: v{0}'.format(version), logger.DEBUG)
         new_ep_version = version
 
+        # Exempted from manual snatched downloads. If the destination episode is archived abort postprocessing.
+        if not self.manually_searched and ep_obj.status == ARCHIVED:
+            raise EpisodePostProcessingAbortException(
+                'Destination episode has a status of Archived. Abort postprocessing.'
+            )
+
         # check for an existing file
-        existing_file_status = self._compare_file_size(ep_obj.location)
+        existing_file_size_comparison = self._compare_file_size(ep_obj.location)
 
         if not priority_download:
-            if existing_file_status == PostProcessor.EXISTS_SAME:
+            if existing_file_size_comparison == PostProcessor.EXISTS_SAME:
                 self.log(u'File exists and the new file has the same size, aborting post-processing')
                 return True
 
-            if existing_file_status != PostProcessor.DOESNT_EXIST:
+            if existing_file_size_comparison != PostProcessor.DOESNT_EXIST:
                 if self.is_proper and new_ep_quality == old_ep_quality:
                     self.log(u'New file is a PROPER, marking it safe to replace')
                     self.flag_kodi_clean_library()
@@ -1131,14 +1156,15 @@ class PostProcessor(object):
         # if the file is priority then we're going to replace it even if it exists
         else:
             # Set to clean Kodi if file exists and it is priority_download
-            if existing_file_status != PostProcessor.DOESNT_EXIST:
+            if existing_file_size_comparison != PostProcessor.DOESNT_EXIST:
                 self.flag_kodi_clean_library()
             self.log(u"This download is marked a priority download so I'm going to replace "
                      u'an existing file if I find one')
 
         # try to find out if we have enough space to perform the copy or move action.
         if not helpers.is_file_locked(self.file_path, False):
-            if not verify_freespace(self.file_path, ep_obj.series._location, [ep_obj] + ep_obj.related_episodes):
+            if not verify_freespace(self.file_path, os.path.dirname(ep_obj.series._location),
+                                    [ep_obj] + ep_obj.related_episodes):
                 self.log(u'Not enough space to continue post-processing, exiting', logger.WARNING)
                 return False
         else:

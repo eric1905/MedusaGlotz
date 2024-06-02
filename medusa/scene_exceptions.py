@@ -18,6 +18,8 @@ from medusa.indexers.config import INDEXER_TVDBV2
 from medusa.logger.adapters.style import BraceAdapter
 from medusa.session.core import MedusaSafeSession
 
+from requests.compat import urljoin
+
 from six import iteritems
 
 logger = BraceAdapter(logging.getLogger(__name__))
@@ -39,7 +41,10 @@ def refresh_exceptions_cache(series_obj=None):
     logger.info('Updating exception_cache and exception_season_cache')
 
     # Empty the module level variables
-    exceptions_cache.clear()
+    if not series_obj:
+        exceptions_cache.clear()
+    else:
+        exceptions_cache[(series_obj.indexer, series_obj.series_id)].clear()
 
     main_db_con = db.DBConnection()
     query = """
@@ -169,7 +174,7 @@ def get_season_from_name(series_obj, exception_name):
 
 def get_all_scene_exceptions(series_obj):
     """
-    Get all scene exceptions for a show ID.
+    Get all scene exceptions for a show object using indexer and series_id.
 
     :param series_obj: series object.
     :return: dict of exceptions (e.g. exceptions_cache[season][exception_name])
@@ -239,6 +244,8 @@ def update_scene_exceptions(series_obj, scene_exceptions):
                 [series_obj.indexer, series_obj.series_id, exception['title'], exception['season'], exception['custom']]
             )
 
+    refresh_exceptions_cache(series_obj)
+
 
 def retrieve_exceptions(force=False, exception_type=None):
     """
@@ -283,7 +290,7 @@ def retrieve_exceptions(force=False, exception_type=None):
                 for scene_exception, season in iteritems(exception_dict):
                     if scene_exception not in existing_exceptions:
                         queries.append([
-                            'INSERT OR IGNORE INTO scene_exceptions '
+                            'INSERT OR IGNORE INTO scene_exceptions'
                             '(indexer, series_id, title, season, custom) '
                             'VALUES (?,?,?,?,?)',
                             [indexer, series_id, scene_exception, season, False]
@@ -348,7 +355,7 @@ def _get_custom_exceptions(force):
 
 def _get_xem_exceptions(force):
     xem_exceptions = defaultdict(dict)
-    url = 'http://thexem.de/map/allNames'
+    url = urljoin(app.XEM_URL, '/map/allNames')
     params = {
         'origin': None,
         'seasonNumbers': 1,

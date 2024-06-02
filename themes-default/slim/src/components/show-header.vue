@@ -1,5 +1,5 @@
 <template>
-    <div class="show-header-container">
+    <div v-if="slug === show.id.slug" class="show-header-container">
         <div class="row">
             <!-- @TODO: Remove data attributes -->
             <!-- @SEE: https://github.com/pymedusa/Medusa/pull/5087#discussion_r214074436 -->
@@ -63,7 +63,7 @@
                     <div class="show-poster-container">
                         <div class="row">
                             <div class="image-flex-container col-md-12">
-                                <asset v-if="show.id.slug" default-src="images/poster.png" :show-slug="show.id.slug" type="posterThumb" cls="show-image shadow" :link="true" />
+                                <asset v-if="show.id.slug" :key="show.id.slug" default-src="images/poster.png" :show-slug="show.id.slug" type="posterThumb" cls="show-image shadow" :link="true" />
                             </div>
                         </div>
                     </div>
@@ -73,7 +73,7 @@
                     <div class="show-info-container">
                         <div class="row">
                             <div class="pull-right col-lg-3 col-md-3 hidden-sm hidden-xs">
-                                <asset v-if="show.id.slug" default-src="images/banner.png" :show-slug="show.id.slug" type="banner" cls="show-banner pull-right shadow" :link="true" />
+                                <asset v-if="show.id.slug" :key="show.id.slug" default-src="images/banner.png" :show-slug="show.id.slug" type="banner" cls="show-banner pull-right shadow" :link="true" />
                             </div>
                             <div id="indexers" class="pull-left col-lg-9 col-md-9 col-sm-12 col-xs-12">
                                 <span
@@ -83,41 +83,26 @@
                                 >
                                     <span :style="{ width: (Number(show.rating.imdb.rating) * 10) + '%' }" />
                                 </span>
-                                <template v-if="!show.id.imdb">
+                                <template v-if="!show.imdbInfo || !show.imdbInfo.imdbId">
                                     <span v-if="show.year.start">({{ show.year.start }}) - {{ show.runtime }} minutes - </span>
                                 </template>
                                 <template v-else>
-                                    <img v-for="country in show.countryCodes" :key="'flag-' + country" src="images/blank.png" :class="['country-flag', 'flag-' + country]" width="16" height="11" style="margin-left: 3px; vertical-align:middle;">
+                                    <img v-for="country in show.countryCodes" :key="`flag-${country}`" src="images/blank.png" :class="['country-flag', `flag-${country}`]" width="16" height="11" style="margin-left: 3px; vertical-align:middle;">
                                     <span v-if="show.imdbInfo.year">
                                         ({{ show.imdbInfo.year }}) -
                                     </span>
                                     <span>
                                         {{ show.imdbInfo.runtimes || show.runtime }} minutes
                                     </span>
-                                    <app-link :href="`https://www.imdb.com/title/${show.id.imdb}`" :title="'https://www.imdb.com/title/' + show.id.imdb">
-                                        <img alt="[imdb]" height="16" width="16" src="images/imdb.png" style="margin-top: -1px; vertical-align:middle;">
-                                    </app-link>
                                 </template>
 
                                 <div id="indexer-wrapper">
-                                    <img id="stored-by-indexer" src="images/star.png">
-                                    <app-link v-if="showIndexerUrl && indexerConfig[show.indexer].icon" :href="showIndexerUrl" :title="showIndexerUrl">
+                                    <app-link v-if="getShowIndexerUrl(show) && indexerConfig[show.indexer].icon" :href="getShowIndexerUrl(show)" :title="getShowIndexerUrl(show)">
+                                        <img id="stored-by-indexer" src="images/star.png">
                                         <img :alt="indexerConfig[show.indexer].name" height="16" width="16" :src="`images/${indexerConfig[show.indexer].icon}`" style="margin-top: -1px; vertical-align:middle;">
                                     </app-link>
                                 </div>
-
-                                <app-link v-if="show.id.trakt" :href="`https://trakt.tv/shows/${show.id.trakt}`" :title="`https://trakt.tv/shows/${show.id.trakt}`">
-                                    <img alt="[trakt]" height="16" width="16" src="images/trakt.png">
-                                </app-link>
-
-                                <app-link v-if="show.xemNumbering && show.xemNumbering.length > 0" :href="`http://thexem.de/search?q=${show.title}`" :title="`http://thexem.de/search?q=${show.title}`">
-                                    <img alt="[xem]" height="16" width="16" src="images/xem.png" style="margin-top: -1px; vertical-align:middle;">
-                                </app-link>
-
-                                <app-link v-if="show.id.tvdb" :href="`https://fanart.tv/series/${show.id.tvdb}`" :title="`https://fanart.tv/series/${show.id[show.indexer]}`">
-                                    <img alt="[fanart.tv]" height="16" width="16" src="images/fanart.tv.png" class="fanart">
-                                </app-link>
-
+                                <externals :show="show" />
                             </div>
                             <div id="tags" class="pull-left col-lg-9 col-md-9 col-sm-12 col-xs-12">
                                 <ul class="tags" v-if="show.genres">
@@ -152,9 +137,9 @@
                                                 <tr v-if="combineQualities(show.config.qualities.allowed) > 0">
                                                     <td class="showLegend">Allowed Qualities:</td>
                                                     <td>
-                                                        <template v-for="(curQuality, index) in show.config.qualities.allowed"><!--
-                                                            -->{{ index > 0 ? ', ' : '' }}<!--
-                                                            --><quality-pill :quality="curQuality" :key="`allowed-${curQuality}`" />
+                                                        <template v-for="(curQuality, index) in show.config.qualities.allowed">
+                                                            {{ index > 0 ? ', ' : '' }}
+                                                            <quality-pill :quality="curQuality" :key="`allowed-${curQuality}`" />
                                                         </template>
                                                     </td>
                                                 </tr>
@@ -162,9 +147,9 @@
                                                 <tr v-if="combineQualities(show.config.qualities.preferred) > 0">
                                                     <td class="showLegend">Preferred Qualities:</td>
                                                     <td>
-                                                        <template v-for="(curQuality, index) in show.config.qualities.preferred"><!--
-                                                            -->{{ index > 0 ? ', ' : '' }}<!--
-                                                            --><quality-pill :quality="curQuality" :key="`preferred-${curQuality}`" />
+                                                        <template v-for="(curQuality, index) in show.config.qualities.preferred">
+                                                            {{ index > 0 ? ', ' : '' }}
+                                                            <quality-pill :quality="curQuality" :key="`preferred-${curQuality}`" />
                                                         </template>
                                                     </td>
                                                 </tr>
@@ -267,8 +252,8 @@
                                     <div id="show-status" class="col-lg-3 col-md-4 col-sm-4 col-xs-12 pull-xs-left">
                                         <table class="pull-xs-left pull-md-right pull-sm-right pull-lg-right">
                                             <tr v-if="show.language"><td class="showLegend">Info Language:</td><td><img :src="'images/subtitles/flags/' + getCountryISO2ToISO3(show.language) + '.png'" width="16" height="11" :alt="show.language" :title="show.language" onError="this.onerror=null;this.src='images/flags/unknown.png';"></td></tr>
-                                            <tr v-if="config.subtitles.enabled"><td class="showLegend">Subtitles: </td><td><state-switch :theme="layout.themeName" :state="show.config.subtitlesEnabled" @click="toggleConfigOption('subtitlesEnabled');" /></td></tr>
-                                            <tr><td class="showLegend">Season Folders: </td><td><state-switch :theme="layout.themeName" :state="show.config.seasonFolders || config.namingForceFolders" /></td></tr>
+                                            <tr v-if="subtitles.enabled"><td class="showLegend">Subtitles: </td><td><state-switch :theme="layout.themeName" :state="show.config.subtitlesEnabled" @click="toggleConfigOption('subtitlesEnabled');" /></td></tr>
+                                            <tr><td class="showLegend">Season Folders: </td><td><state-switch :theme="layout.themeName" :state="show.config.seasonFolders || general.namingForceFolders" /></td></tr>
                                             <tr><td class="showLegend">Paused: </td><td><state-switch :theme="layout.themeName" :state="show.config.paused" @click="toggleConfigOption('paused')" /></td></tr>
                                             <tr><td class="showLegend">Air-by-Date: </td><td><state-switch :theme="layout.themeName" :state="show.config.airByDate" @click="toggleConfigOption('airByDate')" /></td></tr>
                                             <tr><td class="showLegend">Sports: </td><td><state-switch :theme="layout.themeName" :state="show.config.sports" @click="toggleConfigOption('sports')" /></td></tr>
@@ -332,10 +317,9 @@ import Truncate from 'vue-truncate-collapsed';
 import { getLanguage } from 'country-language';
 import { scrollTo } from 'vue-scrollto';
 import { mapActions, mapState, mapGetters } from 'vuex';
-import { api } from '../api';
 import { combineQualities, humanFileSize } from '../utils/core';
 import { attachImdbTooltip } from '../utils/jquery';
-import { AppLink, Asset, QualityPill, StateSwitch } from './helpers';
+import { AppLink, Asset, Externals, QualityPill, StateSwitch } from './helpers';
 
 /**
  * Return the first item of `values` that is not `null`, `undefined` or `NaN`.
@@ -353,6 +337,7 @@ export default {
     components: {
         AppLink,
         Asset,
+        Externals,
         QualityPill,
         StateSwitch,
         Truncate
@@ -430,7 +415,8 @@ export default {
     },
     computed: {
         ...mapState({
-            config: state => state.config.general,
+            general: state => state.config.general,
+            subtitles: state => state.config.subtitles,
             layout: state => state.config.layout,
             shows: state => state.shows.shows,
             indexers: state => state.config.indexers,
@@ -439,31 +425,22 @@ export default {
             qualities: state => state.config.consts.qualities.values,
             statuses: state => state.config.consts.statuses,
             search: state => state.config.search,
-            configLoaded: state => state.config.layout.fanartBackground !== null
+            configLoaded: state => state.config.system.configLoaded,
+            client: state => state.auth.client
         }),
         ...mapGetters({
             show: 'getCurrentShow',
             getEpisode: 'getEpisode',
             getOverviewStatus: 'getOverviewStatus',
             getQualityPreset: 'getQualityPreset',
-            getStatus: 'getStatus'
+            getStatus: 'getStatus',
+            getShowIndexerUrl: 'getShowIndexerUrl'
         }),
         season() {
             return resolveToValue(this.showSeason, Number(this.$route.query.season));
         },
         episode() {
             return resolveToValue(this.showEpisode, Number(this.$route.query.episode));
-        },
-        showIndexerUrl() {
-            const { show, indexerConfig } = this;
-            if (!show.indexer) {
-                return;
-            }
-
-            const id = show.id[show.indexer];
-            const indexerUrl = indexerConfig[show.indexer].showUrl;
-
-            return `${indexerUrl}${id}`;
         },
         activeShowQueueStatuses() {
             const { showQueueStatus } = this.show;
@@ -497,7 +474,7 @@ export default {
                 Allowed: 0
             };
             seasons.forEach(season => {
-                season.episodes.forEach(episode => {
+                season.children.forEach(episode => {
                     summary[getOverviewStatus(episode.status, episode.quality, show.config.qualities)] += 1;
                 });
             });
@@ -549,6 +526,10 @@ export default {
         }
     },
     mounted() {
+        if (!this.show.id.slug || this.slug !== this.show.id.slug) {
+            this.setCurrentShow(this.slug);
+        }
+
         ['load', 'resize'].map(event => {
             return window.addEventListener(event, () => {
                 this.$nextTick(() => this.reflowLayout());
@@ -564,7 +545,8 @@ export default {
     },
     methods: {
         ...mapActions([
-            'setSpecials'
+            'setSpecials',
+            'setCurrentShow'
         ]),
         combineQualities,
         humanFileSize,
@@ -597,7 +579,7 @@ export default {
             const data = {
                 config: { [option]: config[option] }
             };
-            api.patch('series/' + show.id.slug, data).then(_ => {
+            this.client.api.patch('series/' + show.id.slug, data).then(_ => {
                 this.$snotify.success(
                     `${data.config[option] ? 'enabled' : 'disabled'} show option ${option}`,
                     'Saved',

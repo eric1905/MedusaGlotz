@@ -4,7 +4,8 @@ from __future__ import unicode_literals
 
 from collections import defaultdict
 
-from medusa import app
+from medusa import app, db
+from medusa.common import WANTED
 from medusa.search.manual import collect_episodes_from_search_thread
 from medusa.search.queue import (
     BacklogQueueItem,
@@ -94,7 +95,7 @@ class SearchHandler(BaseRequestHandler):
               ]
             }
         """
-        if not data or not all([data.get('showSlug'), data.get('episodes') or data.get('season')]):
+        if not data or not data.get('showSlug'):
             if data and data.get('options'):
                 if data['options'].get('paused', False):
                     app.search_queue_scheduler.action.pause_backlog()
@@ -112,9 +113,6 @@ class SearchHandler(BaseRequestHandler):
         if not data.get('showSlug'):
             return self._bad_request('You need to provide a show slug')
 
-        if not data.get('episodes') and not data.get('season'):
-            return self._bad_request('For a backlog search you need to provide a list of episodes or seasons')
-
         identifier = SeriesIdentifier.from_slug(data['showSlug'])
         if not identifier:
             return self._bad_request('Invalid series slug')
@@ -122,6 +120,11 @@ class SearchHandler(BaseRequestHandler):
         series = Series.find_by_identifier(identifier)
         if not series:
             return self._not_found('Series not found')
+
+        if not data.get('episodes') and not data.get('season'):
+            # Queue a backlog search for a show.
+            app.backlog_search_scheduler.action.search_backlog([series])
+            return self._accepted(f"Backlog search for {data['showSlug']} started")
 
         episode_segments = self._get_episode_segments(series, data)
 
@@ -140,7 +143,18 @@ class SearchHandler(BaseRequestHandler):
             return self._not_found('Could not find any episode for show {show}. Did you provide the correct format?'
                                    .format(show=series.name))
 
+        main_db_con = db.DBConnection()
         for segment in itervalues(episode_segments):
+            # Change the status for the searched eps to 'Wanted'
+            ep_sql_l = []
+            for episode in segment:
+                ep_sql = episode.mass_update_episode_status(WANTED)
+                if ep_sql:
+                    ep_sql_l.append(ep_sql)
+
+            if ep_sql_l:
+                main_db_con.mass_action(ep_sql_l)
+
             cur_backlog_queue_item = BacklogQueueItem(series, segment)
             app.forced_search_queue_scheduler.action.add_item(cur_backlog_queue_item)
 

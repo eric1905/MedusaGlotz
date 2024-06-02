@@ -13,14 +13,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="customQuality"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Quality
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="customQuality"
+          >
+            <span>
+              Quality
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"
@@ -44,14 +48,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
           <div
             class="row"
           >
-            <label
-              class="col-sm-2 control-label"
-              for="subtitles"
+            <div
+              class="col-sm-2"
             >
-              <span>
-                Subtitles
-              </span>
-            </label>
+              <label
+                class="control-label"
+                for="subtitles"
+              >
+                <span>
+                  Subtitles
+                </span>
+              </label>
+            </div>
              
             <div
               class="col-sm-10 content"
@@ -81,14 +89,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="defaultStatus"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Status for previously aired episodes
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="defaultStatus"
+          >
+            <span>
+              Status for previously aired episodes
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"
@@ -123,14 +135,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="defaultStatusAfter"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Status for all future episodes
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="defaultStatusAfter"
+          >
+            <span>
+              Status for all future episodes
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"
@@ -168,14 +184,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
         <div
           class="row"
         >
-          <label
-            class="col-sm-2 control-label"
-            for="season_folders"
+          <div
+            class="col-sm-2"
           >
-            <span>
-              Season Folders
-            </span>
-          </label>
+            <label
+              class="control-label"
+              for="season_folders"
+            >
+              <span>
+                Season Folders
+              </span>
+            </label>
+          </div>
            
           <div
             class="col-sm-10 content"
@@ -211,14 +231,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
         <div
           class="row"
         >
-          <label
-            class="col-sm-2 control-label"
-            for="scene"
+          <div
+            class="col-sm-2"
           >
-            <span>
-              Scene Numbering
-            </span>
-          </label>
+            <label
+              class="control-label"
+              for="scene"
+            >
+              <span>
+                Scene Numbering
+              </span>
+            </label>
+          </div>
            
           <div
             class="col-sm-10 content"
@@ -250,20 +274,26 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
         <div
           class="row"
         >
-          <label
-            class="col-sm-2 control-label"
-            for="show_lists"
+          <div
+            class="col-sm-2"
           >
-            <span>
-              Display in show lists
-            </span>
-          </label>
+            <label
+              class="control-label"
+              for="show_lists"
+            >
+              <span>
+                Display in show lists
+              </span>
+            </label>
+          </div>
            
           <div
             class="col-sm-10 content"
           >
             <div
+              aria-owns="listbox-null"
               class="multiselect"
+              role="combobox"
               tabindex="-1"
             >
               <div
@@ -290,10 +320,12 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
                 </transition-stub>
                  
                 <input
-                  autocomplete="nope"
+                  aria-controls="listbox-null"
+                  autocomplete="off"
                   class="multiselect__input"
                   name=""
                   placeholder="Select option"
+                  spellcheck="false"
                   style="width: 0px; position: absolute; padding: 0px;"
                   tabindex="0"
                   type="text"
@@ -320,6 +352,8 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
                 >
                   <ul
                     class="multiselect__content"
+                    id="listbox-null"
+                    role="listbox"
                     style="display: inline-block;"
                   >
                      
@@ -327,6 +361,8 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
                      
                     <li
                       class="multiselect__element"
+                      id="null-0"
+                      role="option"
                     >
                       <span
                         class="multiselect__option multiselect__option--highlight"
@@ -343,6 +379,8 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
                     </li>
                     <li
                       class="multiselect__element"
+                      id="null-1"
+                      role="option"
                     >
                       <span
                         class="multiselect__option"
@@ -399,14 +437,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` disabled 1
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="saveDefaultsButton"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Use current values as the defaults
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="saveDefaultsButton"
+          >
+            <span>
+              Use current values as the defaults
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"
@@ -437,14 +479,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="customQuality"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Quality
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="customQuality"
+          >
+            <span>
+              Quality
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"
@@ -468,14 +514,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
           <div
             class="row"
           >
-            <label
-              class="col-sm-2 control-label"
-              for="subtitles"
+            <div
+              class="col-sm-2"
             >
-              <span>
-                Subtitles
-              </span>
-            </label>
+              <label
+                class="control-label"
+                for="subtitles"
+              >
+                <span>
+                  Subtitles
+                </span>
+              </label>
+            </div>
              
             <div
               class="col-sm-10 content"
@@ -505,14 +555,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="defaultStatus"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Status for previously aired episodes
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="defaultStatus"
+          >
+            <span>
+              Status for previously aired episodes
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"
@@ -547,14 +601,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="defaultStatusAfter"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Status for all future episodes
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="defaultStatusAfter"
+          >
+            <span>
+              Status for all future episodes
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"
@@ -592,14 +650,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
         <div
           class="row"
         >
-          <label
-            class="col-sm-2 control-label"
-            for="season_folders"
+          <div
+            class="col-sm-2"
           >
-            <span>
-              Season Folders
-            </span>
-          </label>
+            <label
+              class="control-label"
+              for="season_folders"
+            >
+              <span>
+                Season Folders
+              </span>
+            </label>
+          </div>
            
           <div
             class="col-sm-10 content"
@@ -631,14 +693,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
         <div
           class="row"
         >
-          <label
-            class="col-sm-2 control-label"
-            for="anime"
+          <div
+            class="col-sm-2"
           >
-            <span>
-              Anime
-            </span>
-          </label>
+            <label
+              class="control-label"
+              for="anime"
+            >
+              <span>
+                Anime
+              </span>
+            </label>
+          </div>
            
           <div
             class="col-sm-10 content"
@@ -672,14 +738,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
         <div
           class="row"
         >
-          <label
-            class="col-sm-2 control-label"
-            for="scene"
+          <div
+            class="col-sm-2"
           >
-            <span>
-              Scene Numbering
-            </span>
-          </label>
+            <label
+              class="control-label"
+              for="scene"
+            >
+              <span>
+                Scene Numbering
+              </span>
+            </label>
+          </div>
            
           <div
             class="col-sm-10 content"
@@ -711,20 +781,26 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
         <div
           class="row"
         >
-          <label
-            class="col-sm-2 control-label"
-            for="show_lists"
+          <div
+            class="col-sm-2"
           >
-            <span>
-              Display in show lists
-            </span>
-          </label>
+            <label
+              class="control-label"
+              for="show_lists"
+            >
+              <span>
+                Display in show lists
+              </span>
+            </label>
+          </div>
            
           <div
             class="col-sm-10 content"
           >
             <div
+              aria-owns="listbox-null"
               class="multiselect"
+              role="combobox"
               tabindex="-1"
             >
               <div
@@ -751,10 +827,12 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
                 </transition-stub>
                  
                 <input
-                  autocomplete="nope"
+                  aria-controls="listbox-null"
+                  autocomplete="off"
                   class="multiselect__input"
                   name=""
                   placeholder="Select option"
+                  spellcheck="false"
                   style="width: 0px; position: absolute; padding: 0px;"
                   tabindex="0"
                   type="text"
@@ -781,6 +859,8 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
                 >
                   <ul
                     class="multiselect__content"
+                    id="listbox-null"
+                    role="listbox"
                     style="display: inline-block;"
                   >
                      
@@ -788,6 +868,8 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
                      
                     <li
                       class="multiselect__element"
+                      id="null-0"
+                      role="option"
                     >
                       <span
                         class="multiselect__option multiselect__option--highlight"
@@ -804,6 +886,8 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
                     </li>
                     <li
                       class="multiselect__element"
+                      id="null-1"
+                      role="option"
                     >
                       <span
                         class="multiselect__option"
@@ -860,14 +944,18 @@ exports[`AddShowOptions.test.js renders with \`enable-anime-options\` enabled 1`
       <div
         class="row"
       >
-        <label
-          class="col-sm-2 control-label"
-          for="saveDefaultsButton"
+        <div
+          class="col-sm-2"
         >
-          <span>
-            Use current values as the defaults
-          </span>
-        </label>
+          <label
+            class="control-label"
+            for="saveDefaultsButton"
+          >
+            <span>
+              Use current values as the defaults
+            </span>
+          </label>
+        </div>
          
         <div
           class="col-sm-10 content"

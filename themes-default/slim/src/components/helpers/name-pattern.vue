@@ -4,9 +4,11 @@
         In that case, we're showing this checkbox, to display the rest of the form.
         If type evaulates to an empty string, we're asuming this is the default name pattern. And it's enabled by default. -->
         <div v-if="type" class="form-group">
-            <label for="enable_naming_custom" class="col-sm-2 control-label">
-                <span>Custom {{ type }}</span>
-            </label>
+            <div class="col-sm-2">
+                <label for="enable_naming_custom" class="control-label">
+                    <span>Custom {{ type }}</span>
+                </label>
+            </div>
             <div class="col-sm-10 content">
                 <toggle-button :width="45" :height="22" id="enable_naming_custom" name="enable_naming_custom" v-model="isEnabled" @input="update()" sync />
                 <span>Name {{ type }} shows differently than regular shows?</span>
@@ -15,9 +17,11 @@
 
         <div v-if="!type || isEnabled" class="episode-naming">
             <div class="form-group">
-                <label for="name_presets" class="col-sm-2 control-label">
-                    <span>Name Pattern:</span>
-                </label>
+                <div class="col-sm-2">
+                    <label for="name_presets" class="control-label">
+                        <span>Name Pattern:</span>
+                    </label>
+                </div>
                 <div class="col-sm-10 content">
                     <select id="name_presets" class="form-control input-sm" v-model="selectedNamingPattern" @change="updatePatternSamples" @input="update()">
                         <option :id="preset.pattern" v-for="preset in presets" :key="preset.pattern">{{ preset.example }}</option>
@@ -27,11 +31,13 @@
 
             <div id="naming_custom">
                 <div v-if="isCustom" class="form-group" style="padding-top: 0;">
-                    <label class="col-sm-2 control-label">
-                        <span>&nbsp;</span>
-                    </label>
+                    <div class="col-sm-2">
+                        <label class="control-label">
+                            <span>&nbsp;</span>
+                        </label>
+                    </div>
                     <div class="col-sm-10 content">
-                        <input type="text" name="naming_pattern" id="naming_pattern" v-model="customName" @change="updatePatternSamples" @input="update()" class="form-control-inline-max input-sm max-input350">
+                        <input type="text" name="naming_pattern" id="naming_pattern" v-model="customName" @change="updatePatternSamples" class="form-control-inline-max input-sm max-input350">
                         <img src="images/legend16.png" width="16" height="16" alt="[Toggle Key]" id="show_naming_key" title="Toggle Naming Legend" class="legend" @click="showLegend = !showLegend">
                     </div>
                 </div>
@@ -147,6 +153,17 @@
                                 <td>{{ getDateFormat('yyyy')}}</td>
                             </tr>
                             <tr>
+                                <td>&nbsp;</td>
+                                <td>%Mm</td>
+                                <td>{{ getDateFormat('MMM')}}</td>
+                            </tr>
+                            <tr>
+                                <td>&nbsp;</td>
+                                <td>%MM</td>
+                                <td>{{ getDateFormat('MMMM')}}</td>
+                            </tr>
+
+                            <tr>
                                 <td class="align-right"><b>Post-Processing Date:</b></td>
                                 <td>%CM</td>
                                 <td>{{ getDateFormat('M') }}</td>
@@ -192,16 +209,21 @@
                                 <td>720p_HDTV_x264</td>
                             </tr>
                             <tr class="even">
+                                <td class="align-right"><b>Show premiere year:</b></td>
+                                <td>%SY</td>
+                                <td>{{ getDateFormat('yyyy') }}</td>
+                            </tr>
+                            <tr>
                                 <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="Multi-EP style is ignored" /> <b>Release Name:</b></td>
                                 <td>%RN</td>
                                 <td>Show.Name.S02E03.HDTV.x264-RLSGROUP</td>
                             </tr>
-                            <tr>
+                            <tr class="even">
                                 <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="UNKNOWN_RELEASE_GROUP is used in place of RLSGROUP if it could not be properly detected" /> <b>Release Group:</b></td>
                                 <td>%RG</td>
                                 <td>RLSGROUP</td>
                             </tr>
-                            <tr class="even">
+                            <tr>
                                 <td class="align-right"><i class="glyphicon glyphicon-info-sign" title="If episode is proper/repack add 'proper' to name." /> <b>Release Type:</b></td>
                                 <td>%RT</td>
                                 <td>PROPER</td>
@@ -212,9 +234,11 @@
             </div>
 
             <div v-if="selectedMultiEpStyle" class="form-group">
-                <label class="col-sm-2 control-label" for="naming_multi_ep">
-                    <span>Multi-Episode Style:</span>
-                </label>
+                <div class="col-sm-2">
+                    <label class="control-label" for="naming_multi_ep">
+                        <span>Multi-Episode Style:</span>
+                    </label>
+                </div>
                 <div class="col-sm-10 content">
                     <select id="naming_multi_ep" name="naming_multi_ep" v-model="selectedMultiEpStyle" class="form-control input-sm" @change="updatePatternSamples" @input="update($event)">
                         <option id="multiEpStyle" :value="multiEpStyle.value" v-for="multiEpStyle in availableMultiEpStyles" :key="multiEpStyle.value">{{ multiEpStyle.text }}</option>
@@ -237,9 +261,11 @@
 
             <!-- Anime only -->
             <div v-if="animeType > 0" class="form-group">
-                <label for="naming_anime" class="col-sm-2 control-label">
-                    <span>Add Absolute Number</span>
-                </label>
+                <div class="col-sm-2">
+                    <label for="naming_anime" class="control-label">
+                        <span>Add Absolute Number</span>
+                    </label>
+                </div>
                 <div class="col-sm-10 content">
                     <input type="radio" name="naming_anime" id="naming_anime" value="1" v-model="animeType" @change="updatePatternSamples">
                     <span>Add the absolute number to the season/episode format?</span>
@@ -248,9 +274,11 @@
             </div>
 
             <div v-if="animeType > 0" class="form-group">
-                <label for="naming_anime_only" class="col-sm-2 control-label">
-                    <span>Only Absolute Number</span>
-                </label>
+                <div class="col-sm-2">
+                    <label for="naming_anime_only" class="control-label">
+                        <span>Only Absolute Number</span>
+                    </label>
+                </div>
                 <div class="col-sm-10 content">
                     <input type="radio" name="naming_anime" id="naming_anime_only" value="2" v-model="animeType" @change="updatePatternSamples">
                     <span>Replace season/episode format with absolute number</span>
@@ -259,9 +287,11 @@
             </div>
 
             <div v-if="animeType > 0"  class="form-group">
-                <label for="naming_anime_none" class="col-sm-2 control-label">
-                    <span>No Absolute Number</span>
-                </label>
+                <div class="col-sm-2">
+                    <label for="naming_anime_none" class="control-label">
+                        <span>No Absolute Number</span>
+                    </label>
+                </div>
                 <div class="col-sm-10 content">
                     <input type="radio" name="naming_anime" id="naming_anime_none" value="3" v-model="animeType" @change="updatePatternSamples">
                     <span>Don't include the absolute number</span>
@@ -276,7 +306,7 @@
 <script>
 import formatDate from 'date-fns/format';
 import { ToggleButton } from 'vue-js-toggle-button';
-import { apiRoute } from '../../api';
+import { mapState } from 'vuex';
 
 export default {
     name: 'name-pattern',
@@ -335,10 +365,6 @@ export default {
         enabled: {
             type: Boolean,
             default: true
-        },
-        flagLoaded: {
-            type: Boolean,
-            default: false
         }
     },
     data() {
@@ -350,7 +376,7 @@ export default {
             showLegend: false,
             namingExample: '',
             namingExampleMulti: '',
-            isEnabled: false,
+            isEnabled: this.enabled,
             selectedMultiEpStyle: 1,
             animeType: 0,
             lastSelectedPattern: ''
@@ -372,7 +398,8 @@ export default {
             }
 
             try {
-                return apiRoute.get('config/postProcessing/testNaming', { params, timeout: 20000 }).then(res => res.data);
+                return this.client.apiRoute.get('config/postProcessing/testNaming', { params, timeout: 20000 })
+                    .then(res => res.data);
             } catch (error) {
                 console.warn(error);
                 return '';
@@ -412,13 +439,9 @@ export default {
                 this.checkNaming(pattern, this.selectedMultiEpStyle, this.animeType);
             }
 
-            this.update();
+            this.$emit('update-pattern', this.isCustom ? this.customName : this.pattern);
         },
         update() {
-            if (!this.flagLoaded) {
-                return;
-            }
-
             this.$emit('change', {
                 pattern: this.isCustom ? this.customName : this.pattern,
                 type: this.type,
@@ -445,7 +468,7 @@ export default {
             const { $el } = this;
             const el = $($el);
 
-            apiRoute.get('config/postProcessing/isNamingValid', { params, timeout: 20000 }).then(result => {
+            this.client.apiRoute.get('config/postProcessing/isNamingValid', { params, timeout: 20000 }).then(result => {
                 if (result.data === 'invalid') {
                     el.find('#naming_pattern').qtip('option', {
                         'content.text': 'This pattern is invalid.',
@@ -486,6 +509,9 @@ export default {
         }
     },
     computed: {
+        ...mapState({
+            client: state => state.auth.client
+        }),
         isCustom() {
             if (this.pattern) {
                 return !this.presetsPatterns.includes(this.pattern) || this.pattern === 'Custom...';
@@ -528,9 +554,6 @@ export default {
         this.availableMultiEpStyles = this.multiEpStyles;
         this.selectedMultiEpStyle = this.multiEpStyle;
         this.animeType = this.animeNamingType;
-
-        // If type is falsy, we asume it's the default name pattern. And thus enabled by default.
-        this.isEnabled = this.type ? false : this.enabled;
 
         // Update the pattern samples
         this.updatePatternSamples();

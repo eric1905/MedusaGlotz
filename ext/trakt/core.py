@@ -2,20 +2,22 @@
 """Objects, properties, and methods to be shared across other modules in the
 trakt package
 """
-from __future__ import print_function
 import json
 import logging
 import os
-import requests
-import six
 import sys
 import time
-from collections import namedtuple
+from datetime import datetime, timedelta, timezone
 from functools import wraps
-from requests.compat import urljoin
+from json import JSONDecodeError
+from typing import NamedTuple
+from urllib.parse import urljoin
+
+import requests
 from requests_oauthlib import OAuth2Session
-from datetime import datetime, timedelta
+
 from trakt import errors
+from trakt.errors import BadResponseException
 
 __author__ = 'Jon Nappi'
 __all__ = ['Airs', 'Alias', 'Comment', 'Genre', 'get', 'delete', 'post', 'put',
@@ -26,7 +28,7 @@ __all__ = ['Airs', 'Alias', 'Comment', 'Genre', 'get', 'delete', 'post', 'put',
 
 #: The base url for the Trakt API. Can be modified to run against different
 #: Trakt.tv environments
-BASE_URL = 'https://api-v2launch.trakt.tv/'
+BASE_URL = 'https://api.trakt.tv/'
 
 #: The Trakt.tv OAuth Client ID for your OAuth Application
 CLIENT_ID = None
@@ -44,7 +46,7 @@ HEADERS = {'Content-Type': 'application/json', 'trakt-api-version': '2'}
 CONFIG_PATH = os.path.join(os.path.expanduser('~'), '.pytrakt.json')
 
 #: Your personal Trakt.tv OAUTH Bearer Token
-OAUTH_TOKEN = api_key = None
+OAUTH_TOKEN = None
 
 # OAuth token validity checked
 OAUTH_TOKEN_VALID = None
@@ -70,6 +72,9 @@ AUTH_METHOD = PIN_AUTH
 #: The ID of the application to register with, when using PIN authentication
 APPLICATION_ID = None
 
+#: Global session to make requests with
+session = requests.Session()
+
 
 def _store(**kwargs):
     """Helper function used to store Trakt configurations at ``CONFIG_PATH``
@@ -90,12 +95,12 @@ def _get_client_info(app_id=False):
     print('If you do not have a client ID and secret. Please visit the '
           'following url to create them.')
     print('http://trakt.tv/oauth/applications')
-    client_id = six.moves.input('Please enter your client id: ')
-    client_secret = six.moves.input('Please enter your client secret: ')
+    client_id = input('Please enter your client id: ')
+    client_secret = input('Please enter your client secret: ')
     if app_id:
         msg = 'Please enter your application ID ({default}): '.format(
             default=APPLICATION_ID)
-        user_input = six.moves.input(msg)
+        user_input = input(msg)
         if user_input:
             APPLICATION_ID = user_input
     return client_id, client_secret
@@ -106,6 +111,9 @@ def pin_auth(pin=None, client_id=None, client_secret=None, store=False):
 
     :param pin: Optional Trakt API PIN code. If one is not specified, you will
         be prompted to go generate one
+    :param client_id: The oauth client_id for authenticating to the trakt API.
+    :param client_secret: The oauth client_secret for authenticating to the
+        trakt API.
     :param store: Boolean flag used to determine if your trakt api auth data
         should be stored locally on the system. Default is :const:`False` for
         the security conscious
@@ -126,14 +134,14 @@ def pin_auth(pin=None, client_id=None, client_secret=None, store=False):
               'url and log in to generate one.')
         pin_url = 'https://trakt.tv/pin/{id}'.format(id=APPLICATION_ID)
         print(pin_url)
-        pin = six.moves.input('Please enter your PIN: ')
+        pin = input('Please enter your PIN: ')
     args = {'code': pin,
             'redirect_uri': REDIRECT_URI,
             'grant_type': 'authorization_code',
             'client_id': CLIENT_ID,
             'client_secret': CLIENT_SECRET}
 
-    response = requests.post(''.join([BASE_URL, '/oauth/token']), data=args)
+    response = session.post(''.join([BASE_URL, '/oauth/token']), data=args)
     OAUTH_TOKEN = response.json().get('access_token', None)
 
     if store:
@@ -152,7 +160,7 @@ def _terminal_oauth_pin(authorization_url):
     print('Please go here and authorize,', authorization_url)
 
     # Get the authorization verifier code from the callback url
-    response = six.moves.input('Paste the Code returned here: ')
+    response = input('Paste the Code returned here: ')
     return response
 
 
@@ -210,9 +218,6 @@ def get_device_code(client_id=None, client_secret=None):
     authentication-devices/device-code
     :param client_id: Your Trakt OAuth Application's Client ID
     :param client_secret: Your Trakt OAuth Application's Client Secret
-    :param store: Boolean flag used to determine if your trakt api auth data
-        should be stored locally on the system. Default is :const:`False` for
-        the security conscious
     :return: Your OAuth device code.
     """
     global CLIENT_ID, CLIENT_SECRET, OAUTH_TOKEN
@@ -225,8 +230,8 @@ def get_device_code(client_id=None, client_secret=None):
     headers = {'Content-Type': 'application/json'}
     data = {"client_id": CLIENT_ID}
 
-    device_response = requests.post(device_code_url, json=data,
-                                    headers=headers).json()
+    device_response = session.post(device_code_url,
+                                   json=data, headers=headers).json()
     print('Your user code is: {user_code}, please navigate to '
           '{verification_url} to authenticate'.format(
             user_code=device_response.get('user_code'),
@@ -266,8 +271,9 @@ def get_device_token(device_code, client_id=None, client_secret=None,
         "client_secret": CLIENT_SECRET
     }
 
-    response = requests.post(urljoin(BASE_URL, '/oauth/device/token'),
-                             json=data)
+    response = session.post(
+        urljoin(BASE_URL, '/oauth/device/token'), json=data
+    )
 
     # We only get json on success.
     if response.status_code == 200:
@@ -356,19 +362,41 @@ def init(*args, **kwargs):
     return auth_method.get(AUTH_METHOD, PIN_AUTH)(*args, **kwargs)
 
 
-Airs = namedtuple('Airs', ['day', 'time', 'timezone'])
-Alias = namedtuple('Alias', ['title', 'country'])
-Genre = namedtuple('Genre', ['name', 'slug'])
-Comment = namedtuple('Comment', ['id', 'parent_id', 'created_at', 'comment',
-                                 'spoiler', 'review', 'replies', 'user',
-                                 'updated_at', 'likes', 'user_rating'])
+class Airs(NamedTuple):
+    day: str
+    time: str
+    timezone: str
+
+
+class Alias(NamedTuple):
+    title: str
+    country: str
+
+
+class Genre(NamedTuple):
+    name: str
+    slug: str
+
+
+class Comment(NamedTuple):
+    id: str
+    parent_id: str
+    created_at: str
+    comment: str
+    spoiler: str
+    review: str
+    replies: str
+    user: str
+    updated_at: str
+    likes: str
+    user_rating: str
 
 
 def _validate_token(s):
     """Check if current OAuth token has not expired"""
     global OAUTH_TOKEN_VALID
-    current = datetime.utcnow()
-    expires_at = datetime.utcfromtimestamp(OAUTH_EXPIRES_AT)
+    current = datetime.now(tz=timezone.utc)
+    expires_at = datetime.fromtimestamp(OAUTH_EXPIRES_AT, tz=timezone.utc)
     if expires_at - current > timedelta(days=2):
         OAUTH_TOKEN_VALID = True
     else:
@@ -387,7 +415,7 @@ def _refresh_token(s):
                 'redirect_uri': REDIRECT_URI,
                 'grant_type': 'refresh_token'
             }
-    response = requests.post(url, json=data, headers=HEADERS)
+    response = session.post(url, json=data, headers=HEADERS)
     s.logger.debug('RESPONSE [post] (%s): %s', url, str(response))
     if response.status_code == 200:
         data = response.json()
@@ -396,8 +424,9 @@ def _refresh_token(s):
         OAUTH_EXPIRES_AT = data.get("created_at") + data.get("expires_in")
         OAUTH_TOKEN_VALID = True
         s.logger.info(
-            "OAuth token successfully refreshed, valid until",
-            datetime.fromtimestamp(OAUTH_EXPIRES_AT)
+            "OAuth token successfully refreshed, valid until {}".format(
+                datetime.fromtimestamp(OAUTH_EXPIRES_AT, tz=timezone.utc)
+            )
         )
         _store(
             CLIENT_ID=CLIENT_ID, CLIENT_SECRET=CLIENT_SECRET,
@@ -410,7 +439,7 @@ def _refresh_token(s):
             "refresh_token is invalid"
         )
     elif response.status_code in s.error_map:
-        raise s.error_map[response.status_code]()
+        raise s.error_map[response.status_code](response)
 
 
 def load_config():
@@ -437,30 +466,7 @@ def load_config():
             APPLICATION_ID = config_data.get('APPLICATION_ID', None)
 
 
-def _bootstrapped(f):
-    """Bootstrap your authentication environment when authentication is needed
-    and if a file at `CONFIG_PATH` exists. The process is completed by setting
-    the client id header.
-    """
-    @wraps(f)
-    def inner(*args, **kwargs):
-        global OAUTH_TOKEN_VALID, OAUTH_EXPIRES_AT
-        global OAUTH_REFRESH, OAUTH_TOKEN
-
-        load_config()
-        # Check token validity and refresh token if needed
-        if (not OAUTH_TOKEN_VALID and OAUTH_EXPIRES_AT is not None
-                and OAUTH_REFRESH is not None):
-            _validate_token(args[0])
-        # For backwards compatability with trakt<=2.3.0
-        if api_key is not None and OAUTH_TOKEN is None:
-            OAUTH_TOKEN = api_key
-
-        return f(*args, **kwargs)
-    return inner
-
-
-class Core(object):
+class Core:
     """This class contains all of the functionality required for interfacing
     with the Trakt.tv API
     """
@@ -475,6 +481,26 @@ class Core(object):
 
         # Map HTTP response codes to exception types
         self.error_map = {err.http_code: err for err in errs}
+        self._bootstrapped = False
+
+    def _bootstrap(self):
+        """Bootstrap your authentication environment when authentication is
+        needed and if a file at `CONFIG_PATH` exists.
+        The process is completed by setting the client id header.
+        """
+
+        if self._bootstrapped:
+            return
+        self._bootstrapped = True
+
+        global OAUTH_TOKEN_VALID, OAUTH_EXPIRES_AT
+        global OAUTH_REFRESH, OAUTH_TOKEN
+
+        load_config()
+        # Check token validity and refresh token if needed
+        if (not OAUTH_TOKEN_VALID and OAUTH_EXPIRES_AT is not None
+                and OAUTH_REFRESH is not None):
+            _validate_token(self)
 
     @staticmethod
     def _get_first(f, *args, **kwargs):
@@ -512,23 +538,26 @@ class Core(object):
         self.logger.debug('%s: %s', method, url)
         HEADERS['trakt-api-key'] = CLIENT_ID
         HEADERS['Authorization'] = 'Bearer {0}'.format(OAUTH_TOKEN)
-        self.logger.debug('headers: %s', str(HEADERS))
         self.logger.debug('method, url :: %s, %s', method, url)
         if method == 'get':  # GETs need to pass data as params, not body
-            response = requests.request(method, url, params=data,
-                                        headers=HEADERS)
+            response = session.request(method, url, headers=HEADERS,
+                                       params=data)
         else:
-            response = requests.request(method, url, data=json.dumps(data),
-                                        headers=HEADERS)
+            response = session.request(method, url, headers=HEADERS,
+                                       data=json.dumps(data))
         self.logger.debug('RESPONSE [%s] (%s): %s', method, url, str(response))
         if response.status_code in self.error_map:
-            raise self.error_map[response.status_code]()
+            raise self.error_map[response.status_code](response)
         elif response.status_code == 204:  # HTTP no content
             return None
-        json_data = json.loads(response.content.decode('UTF-8', 'ignore'))
+
+        try:
+            json_data = json.loads(response.content.decode('UTF-8', 'ignore'))
+        except JSONDecodeError as e:
+            raise BadResponseException(response, f"Unable to parse JSON: {e}")
+
         return json_data
 
-    @_bootstrapped
     def get(self, f):
         """Perform a HTTP GET request using the provided uri yielded from the
         *f* co-routine. The processed JSON results are then sent back to the
@@ -540,6 +569,7 @@ class Core(object):
         """
         @wraps(f)
         def inner(*args, **kwargs):
+            self._bootstrap()
             resp = self._get_first(f, *args, **kwargs)
             if not isinstance(resp, tuple):
                 # Handle cached property responses
@@ -552,7 +582,6 @@ class Core(object):
                 return None
         return inner
 
-    @_bootstrapped
     def delete(self, f):
         """Perform an HTTP DELETE request using the provided uri
 
@@ -560,13 +589,13 @@ class Core(object):
         """
         @wraps(f)
         def inner(*args, **kwargs):
+            self._bootstrap()
             generator = f(*args, **kwargs)
             uri = next(generator)
             url = BASE_URL + uri
             self._handle_request('delete', url)
         return inner
 
-    @_bootstrapped
     def post(self, f):
         """Perform an HTTP POST request using the provided uri and optional
         args yielded from the *f* co-routine. The processed JSON results are
@@ -579,6 +608,7 @@ class Core(object):
         """
         @wraps(f)
         def inner(*args, **kwargs):
+            self._bootstrap()
             url, generator, args = self._get_first(f, *args, **kwargs)
             json_data = self._handle_request('post', url, data=args)
             try:
@@ -587,7 +617,6 @@ class Core(object):
                 return None
         return inner
 
-    @_bootstrapped
     def put(self, f):
         """Perform an HTTP PUT request using the provided uri and optional args
         yielded from the *f* co-routine. The processed JSON results are then
@@ -600,6 +629,7 @@ class Core(object):
         """
         @wraps(f)
         def inner(*args, **kwargs):
+            self._bootstrap()
             url, generator, args = self._get_first(f, *args, **kwargs)
             json_data = self._handle_request('put', url, data=args)
             try:

@@ -23,7 +23,7 @@
                                     </config-toggle-slider>
 
                                     <config-template label-for="default_page" label="Initial page">
-                                        <select id="default_page" name="default_page" v-model="general.defaultPage" class="form-control input-sm">
+                                        <select id="default_page" name="default_page" v-model="general.defaultPage" class="form-control input-sm max-input350">
                                             <option :value="option.value" v-for="option in defaultPageOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
                                         <span>when launching Medusa interface</span>
@@ -57,12 +57,41 @@
                                         <root-dirs />
                                     </config-template>
 
-                                    <config-toggle-slider experimental v-model="general.addTitleWithYear" label="Append (year) to each show title" id="add_title_year">
+                                    <config-toggle-slider v-model="general.addTitleWithYear" label="Append (year) to each show title" id="add_title_year">
                                         <p>Make sure that each show title is added with (year) appended to it</p>
                                         <p>The show title with year is only used for show folder creation as representation in the UI.</p>
                                     </config-toggle-slider>
 
                                     <input type="submit" class="btn-medusa config_submitter" value="Save Changes">
+                                </fieldset>
+                            </div>
+                        </div>
+
+                        <div class="row component-group">
+                            <div class="component-group-desc col-xs-12 col-md-2">
+                                <h3 style="word-break: break-word">Recommended shows</h3>
+                                <p>Options for controlling the caching of recommended shows.</p>
+                            </div>
+                            <div class="col-xs-12 col-md-10">
+                                <fieldset class="component-group-list">
+                                    <config-toggle-slider v-model="general.recommended.cache.shows" label="Cache recommended shows" id="cache_rec_shows">
+                                        <p>Enabling recommended shows, will cache recommended shows on a daily interval.</p>
+                                    </config-toggle-slider>
+                                    <template v-if="general.recommended.cache.shows">
+                                        <config-toggle-slider v-model="general.recommended.cache.trakt" label="Cache Trakt lists" id="cache_rec_trakt" />
+                                        <config-template label-for="trakt_selected_lists" label="Trakt enabled lists">
+                                            <select-trakt-lists v-if="general.recommended.cache.trakt" />
+                                        </config-template>
+
+                                        <config-toggle-slider v-model="general.recommended.cache.imdb" label="Cache Imdb lists" id="cache_rec_imdb" />
+                                        <config-toggle-slider v-model="general.recommended.cache.anidb" label="Cache Anidb lists" id="cache_rec_anidb" />
+                                        <config-toggle-slider v-model="general.recommended.cache.anilist" label="Cache AniList lists" id="cache_rec_anilist" />
+
+                                        <config-textbox-number v-model="general.recommended.cache.purgeAfterDays" label="Purge shows from db after x days" id="cache_purge_days" :min="0" :step="1">
+                                            <p>Number of days to keep shows in the cache (default: 180) <b>(0 will not purge shows at all)</b></p>
+                                        </config-textbox-number>
+
+                                    </template>
                                 </fieldset>
                             </div>
                         </div>
@@ -92,7 +121,7 @@
                                     </config-textbox-number>
 
                                     <config-template label-for="indexer_default" label="Use initial indexer set to">
-                                        <select id="indexer_default" name="indexer_default" v-model="indexerDefault" class="form-control input-sm">
+                                        <select id="indexer_default" name="indexer_default" v-model="indexerDefault" class="form-control input-sm max-input350">
                                             <option v-for="option in indexerListOptions" :value="option.value" :key="option.value">
                                                 {{ option.text }}
                                             </option>
@@ -161,7 +190,7 @@
                                 <fieldset class="component-group-list">
 
                                     <config-template label-for="theme_name" label="Display theme">
-                                        <select id="theme_name" name="theme_name" class="form-control input-sm" v-model="layout.themeName" @change="changeTheme(layout.themeName)">
+                                        <select id="theme_name" name="theme_name" class="form-control input-sm max-input350" v-model="layout.themeName" @change="changeTheme(layout.themeName)">
                                             <option :value="option.value" v-for="option in availableThemesOptions"
                                                     :key="option.value">{{ option.text }}
                                             </option>
@@ -209,13 +238,17 @@
                                     </config-toggle-slider>
 
                                     <config-template label-for="date_preset" label="Date style">
-                                        <select id="date_preset" name="date_preset" v-model="layout.dateStyle" class="form-control input-sm">
+                                        <select id="date_preset" name="date_preset" v-model="layout.dateStyle" class="form-control input-sm max-input350">
                                             <option :value="option.value" v-for="option in datePresetOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
+                                        <template v-if="layout.dateStyle === '%x'">
+                                            <span>Selecting <strong>System Default</strong> here, will also result in using the browsers default time format.</span>
+                                            <br>Meaning the <strong>Time Style</strong> config option below, will not have any effect on some pages.
+                                        </template>
                                     </config-template>
 
                                     <config-template label-for="time_preset" label="Time style">
-                                        <select id="time_preset" name="time_preset" v-model="layout.timeStyle" class="form-control input-sm">
+                                        <select id="time_preset" name="time_preset" v-model="layout.timeStyle" class="form-control input-sm max-input350">
                                             <option :value="option.value" v-for="option in timePresetOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
                                         <span><b>Note:</b> seconds are only shown on the History page</span>
@@ -279,7 +312,7 @@
                                     </config-toggle-slider>
 
                                     <config-toggle-slider v-model="general.webInterface.ipv6" label="Listen on IPv6" id="web_ipv6">
-                                        <p>enable to be notified when a new login happens in webserver</p>
+                                        <p>enable to listen for connections on IPv6</p>
                                     </config-toggle-slider>
 
                                     <config-toggle-slider v-model="general.webInterface.httpsEnable" label="Enable HTTPS" id="enable_https">
@@ -321,7 +354,7 @@
                                 <fieldset class="component-group-list">
 
                                     <config-template label-for="cpu_presets" label="CPU throttling">
-                                        <select id="cpu_presets" name="cpu_presets" v-model="general.cpuPreset" class="form-control input-sm">
+                                        <select id="cpu_presets" name="cpu_presets" v-model="general.cpuPreset" class="form-control input-sm max-input350">
                                             <option :value="option.value" v-for="option in cpuPresetOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
                                         <span>Normal (default). High is lower and Low is higher CPU use</span>
@@ -387,7 +420,7 @@
                                     </config-toggle-slider>
 
                                     <config-template label-for="ep_default_deleted_status" label="Default deleted episode status">
-                                        <select id="ep_default_deleted_status" name="ep_default_deleted_status" v-model="general.epDefaultDeletedStatus" class="form-control input-sm margin-bottom-5">
+                                        <select id="ep_default_deleted_status" name="ep_default_deleted_status" v-model="general.epDefaultDeletedStatus" class="form-control input-sm margin-bottom-5 max-input350">
                                             <option disabled value="">Please select a default status</option>
                                             <option :value="option.value" v-for="option in defaultDeletedEpOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
@@ -425,7 +458,7 @@
                                     </config-toggle-slider>
 
                                     <config-template label-for="privacy_level" label="Privacy">
-                                        <select id="privacy_level" name="privacy_level" v-model="general.logs.privacyLevel" class="form-control input-sm">
+                                        <select id="privacy_level" name="privacy_level" v-model="general.logs.privacyLevel" class="form-control input-sm max-input350">
                                             <option :value="option.value" v-for="option in privacyLevelOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
                                         <span>
@@ -452,12 +485,12 @@
                                 <fieldset class="component-group-list">
 
                                     <config-template label-for="github_remote_branches" label="Branch version">
-                                        <select id="github_remote_branches" name="github_remote_branches" v-model="selectedBranch" class="form-control input-sm margin-bottom-5">
+                                        <select id="github_remote_branches" name="github_remote_branches" v-model="selectedBranch" class="form-control input-sm margin-bottom-10 max-input350">
                                             <option disabled value="">Please select a branch</option>
                                             <option :value="option.value" v-for="option in githubRemoteBranchesOptions" :key="option.value">{{ option.text }}</option>
                                         </select>
                                         <input :disabled="!gitRemoteBranches.length > 0"
-                                               class="btn-medusa btn-inline" style="margin-left: 6px;" type="button" id="branchCheckout"
+                                               class="btn-medusa btn-inline" type="button" id="branchCheckout"
                                                value="Checkout Branch" @click="validateCheckoutBranch"
                                         >
                                         <span v-if="!gitRemoteBranches.length > 0" style="color:rgb(255, 0, 0);"><p>Error: No branches found.</p></span>
@@ -468,61 +501,44 @@
                                         </p>
                                     </config-template>
 
-                                    <config-template label-for="date_presets" label="GitHub authentication type">
-                                        <div class="radio-item">
-                                            <input type="radio" name="git_auth_type_basic" id="git_auth_type_basic" :value="0" v-model="general.git.authType">
-                                            <label for="one">Username and password</label>
-                                        </div>
-                                        <div class="radio-item">
-                                            <input type="radio" name="git_auth_type_token" id="git_auth_type_token" :value="1" v-model="general.git.authType">
-                                            <label for="one">Personal access token</label>
-                                        </div>
-                                        <p>You must use a personal access token if you're using "two-factor authentication" on GitHub.</p>
-                                    </config-template>
+                                    <!-- Token authentication -->
+                                    <config-textbox
+                                        v-model="general.git.token"
+                                        label="GitHub personal access token"
+                                        id="git_token"
+                                        input-class="display-inline form-control input-sm max-input350"
+                                        @focus.native="$event.target.select()"
+                                    >
+                                        <template v-if="general.git.token === ''">
+                                            <v-popover
+                                                trigger="click"
+                                                offset="16"
+                                                placement="right"
+                                                popoverBaseClass="tooltip-base"
+                                                :popoverClass="`tooltip-themed${layout.themeName === 'dark' ? '-dark' : '-light'}`"
+                                            >
+                                                <input class="btn-medusa btn-inline" style="margin-top: 10px;" type="button" id="create_access_token" value="Generate Token">
+                                                <template slot="popover">
+                                                    <div class="tooltip-title">Github Token</div>
+                                                    <div class="tooltip-content">
+                                                        <p>Copy the generated token and paste it in the token input box.</p>
+                                                        <p>
+                                                            <a :href="`${(general.anonRedirect || '')}https://github.com/settings/tokens/new?description=Medusa&scopes=gist,public_repo`" target="_blank">
+                                                                <input class="btn-medusa" type="button" value="Continue to Github...">
+                                                            </a>
+                                                        </p><br>
+                                                    </div>
+                                                </template>
+                                            </v-popover>
+                                        </template>
+                                        <template v-else>
+                                            <a :href="`${(general.anonRedirect || '')}https://github.com/settings/tokens`" target="_blank">
+                                                <input class="btn-medusa btn-inline" style="margin-top: 10px" type="button" id="manage_tokens" value="Manage Tokens">
+                                            </a>
+                                        </template>
 
-                                    <div v-show="general.git.authType === 0">
-                                        <!-- username + password authentication -->
-                                        <config-textbox v-model="general.git.username" label="GitHub username" id="git_username">
-                                            <p>*** (REQUIRED FOR SUBMITTING ISSUES) ***</p>
-                                        </config-textbox>
-                                        <config-textbox v-model="general.git.password" label="GitHub password" id="git_password" type="password">
-                                            <p>*** (REQUIRED FOR SUBMITTING ISSUES) ***</p>
-                                        </config-textbox>
-                                    </div>
-                                    <div v-show="general.git.authType !== 0">
-                                        <!-- Token authentication -->
-                                        <config-textbox v-model="general.git.token" @focus.native="$event.target.select()" label="GitHub personal access token" id="git_token" input-class="display-inline margin-bottom-5">
-                                            <template v-if="general.git.token === ''">
-                                                <v-popover
-                                                    trigger="click"
-                                                    offset="16"
-                                                    placement="right"
-                                                    popoverBaseClass="tooltip-base"
-                                                    :popoverClass="`tooltip-themed${layout.themeName === 'dark' ? '-dark' : '-light'}`"
-                                                >
-                                                    <input class="btn-medusa btn-inline" type="button" id="create_access_token" value="Generate Token">
-                                                    <template slot="popover">
-                                                        <div class="tooltip-title">Github Token</div>
-                                                        <div class="tooltip-content">
-                                                            <p>Copy the generated token and paste it in the token input box.</p>
-                                                            <p>
-                                                                <a :href="`${(general.anonRedirect || '')}https://github.com/settings/tokens/new?description=Medusa&scopes=gist,public_repo`" target="_blank">
-                                                                    <input class="btn-medusa" type="button" value="Continue to Github...">
-                                                                </a>
-                                                            </p><br>
-                                                        </div>
-                                                    </template>
-                                                </v-popover>
-                                            </template>
-                                            <template v-else>
-                                                <a :href="`${(general.anonRedirect || '')}https://github.com/settings/tokens`" target="_blank">
-                                                    <input class="btn-medusa btn-inline" type="button" id="manage_tokens" value="Manage Tokens">
-                                                </a>
-                                            </template>
-
-                                            <p>*** (REQUIRED FOR SUBMITTING ISSUES) ***</p>
-                                        </config-textbox>
-                                    </div>
+                                        <p>*** (REQUIRED FOR SUBMITTING ISSUES) ***</p>
+                                    </config-textbox>
 
                                     <config-textbox v-model="general.git.remote" label="GitHub remote for branch" id="git_remote">
                                         <p>default:origin. Access repo configured remotes (save then refresh browser)</p>
@@ -541,14 +557,37 @@
                                             v-model="general.git.resetBranches"
                                             :multiple="true"
                                             :options="gitRemoteBranches"
+                                            class="max-input350"
                                         />
-                                        <input class="btn-medusa btn-inline" style="margin-left: 6px;" type="button" id="branch_force_update" value="Update Branches" @click="gitRemoteBranches()">
+                                        <input class="btn-medusa btn-inline" type="button" id="branch_force_update" value="Update Branches" @click="gitRemoteBranches()">
                                         <span><b>Note:</b> Empty selection means that any branch could be reset.</span>
                                     </config-template>
                                     <input type="submit" class="btn-medusa config_submitter" value="Save Changes">
                                 </fieldset>
                             </div><!-- /col -->
                         </div>
+
+                        <div class="row component-group">
+                            <div class="component-group-desc col-xs-12 col-md-2">
+                                <h3>Backup</h3>
+                            </div>
+                            <div class="col-xs-12 col-md-10">
+                                <fieldset class="component-group-list">
+                                    <config-toggle-slider v-model="general.backup.cacheDb" label="Backup cache related databases" id="cache_db">
+                                        <p>Include cache.db, failed.db, and recommended.db to the backup.</p>
+                                        <p><span style="color: red">Note!</span> These files are not mandatory for a proper restore, but could potentially cause timeouts when backing up or trying to update medusa.</p>
+                                    </config-toggle-slider>
+
+                                    <config-toggle-slider v-model="general.backup.cacheFiles" label="Backup the cache folder (excluding the images)" id="cache_files">
+                                        <p>Include everything in the cache folder to the backup.</p>
+                                        <p><span style="color: red">Note!</span> These files are not mandatory for a proper restore, but could potentially cause timeouts when backing up or trying to update medusa.</p>
+                                    </config-toggle-slider>
+
+                                    <input type="submit" class="btn-medusa config_submitter" value="Save Changes">
+                                </fieldset>
+                            </div><!-- /col -->
+                        </div>
+
                     </div><!-- /component-group3 //-->
                     <br>
                     <h6 class="pull-right"><b>All non-absolute folder locations are relative to <span class="path">{{system.dataDir}}</span></b> </h6>
@@ -609,7 +648,6 @@
 </template>
 
 <script>
-import { api, apiRoute } from '../api.js';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import RootDirs from './root-dirs.vue';
 import {
@@ -620,6 +658,7 @@ import {
     ConfigToggleSlider,
     CustomLogs,
     LanguageSelect,
+    SelectTraktLists,
     SortedSelectList,
     StateSwitch
 } from './helpers';
@@ -644,6 +683,7 @@ export default {
         Multiselect,
         SortedSelectList,
         VPopover,
+        SelectTraktLists,
         StateSwitch,
         ToggleButton,
         RootDirs
@@ -684,12 +724,13 @@ export default {
     computed: {
         ...mapState({
             general: state => state.config.general,
-            configLoaded: state => state.config.consts.statuses.length > 0,
+            configLoaded: state => state.config.system.configLoaded,
             layout: state => state.config.layout,
             statuses: state => state.config.consts.statuses,
             indexers: state => state.config.indexers,
             system: state => state.config.system,
-            gitRemoteBranches: state => state.config.system.gitRemoteBranches // We need the reactivity on this.
+            gitRemoteBranches: state => state.config.system.gitRemoteBranches, // We need the reactivity on this.
+            client: state => state.auth.client
         }),
         ...mapGetters([
             'getStatus'
@@ -856,6 +897,7 @@ export default {
                 randomShowSlug,
                 recentShows,
                 themeName,
+                recommended,
                 ...filteredConfig } = general;
 
             const { local, ...filteredLayout } = layout;
@@ -873,6 +915,12 @@ export default {
                         size: general.logs.size,
                         subliminalLog: general.logs.subliminalLog,
                         privacyLevel: general.logs.privacyLevel
+                    } },
+                    ...{ recommended: {
+                        cache: general.recommended.cache,
+                        trakt: {
+                            selectedLists: general.recommended.trakt.selectedLists
+                        }
                     } }
                 }
             };
@@ -900,11 +948,11 @@ export default {
             setLayoutShow(mergedShowLayout);
         },
         async compareDBUpgrade() {
-            const { checkoutBranch, selectedBranch } = this;
+            const { client, checkoutBranch, selectedBranch } = this;
 
             try {
                 this.checkoutBranchMessage = 'Checking if the checkout requires a database upgrade / downgrade';
-                const result = await apiRoute.get('home/getDBcompare');
+                const result = await client.apiRoute.get('home/getDBcompare');
                 if (result.data.status === 'success') {
                     if (result.data.message === 'equal') {
                         // Checkout Branch
@@ -948,10 +996,10 @@ export default {
             compareDBUpgrade();
         },
         async checkoutBranch() {
-            const { selectedBranch } = this;
+            const { client, selectedBranch } = this;
             this.checkoutBranchMessage = `Checking out branch ${selectedBranch}`;
 
-            await api.post('system/operation', { type: 'CHECKOUT_BRANCH', branch: selectedBranch }, { timeout: 120000 });
+            await client.api.post('system/operation', { type: 'CHECKOUT_BRANCH', branch: selectedBranch }, { timeout: 120000 });
             this.checkoutBranchMessage = `Finished checking out branch ${selectedBranch}`;
 
             setTimeout(() => {
@@ -965,9 +1013,7 @@ export default {
     }
 };
 </script>
-<style>
-@import '../style/modal.css';
-
+<style scoped>
 .display-inline {
     display: inline;
 }
@@ -980,8 +1026,8 @@ export default {
     margin-bottom: 10px;
 }
 
-.margin-bottom-5 {
-    margin-bottom: 5px;
+.margin-bottom-10 {
+    margin-bottom: 10px;
 }
 
 .plotInfo {
@@ -1149,5 +1195,4 @@ export default {
 .tooltip-arrow {
     display: none;
 }
-
 </style>

@@ -188,6 +188,29 @@ def change_TORRENT_DIR(torrent_dir):
     return True
 
 
+def change_RSS_DIR(rss_dir):
+    """
+    Change rss directory
+
+    :param: New rss directory
+    :return: Bool representing success
+    """
+    if not rss_dir:
+        app._RSS_DIR = ''
+        return True
+
+    app_rss_dir = os.path.normpath(app._RSS_DIR) if app._RSS_DIR else None
+
+    if app_rss_dir != os.path.normpath(rss_dir):
+        if helpers.make_dir(rss_dir):
+            app._RSS_DIR = os.path.normpath(rss_dir)
+            log.info(u'Changed rss dir to {0}', rss_dir)
+        else:
+            return False
+
+    return True
+
+
 def change_TV_DOWNLOAD_DIR(tv_download_dir):
     """
     Change TV_DOWNLOAD directory (used by postprocessor)
@@ -341,6 +364,26 @@ def change_SHOWUPDATE_HOUR(freq):
 
     if app.show_update_scheduler:
         app.show_update_scheduler.start_time = datetime.time(hour=app._SHOWUPDATE_HOUR)
+
+
+def change_RECOMMENDED_SHOW_UPDATE_HOUR(freq):
+    """
+    Change frequency of show updater thread.
+
+    :param freq: New frequency
+    """
+    if app._RECOMMENDED_SHOW_UPDATE_HOUR == freq:
+        return
+
+    app._RECOMMENDED_SHOW_UPDATE_HOUR = try_int(freq, app.DEFAULT_RECOMMENDED_SHOW_UPDATE_HOUR)
+
+    if app._RECOMMENDED_SHOW_UPDATE_HOUR > 23:
+        app._RECOMMENDED_SHOW_UPDATE_HOUR = 0
+    elif app._RECOMMENDED_SHOW_UPDATE_HOUR < 0:
+        app._RECOMMENDED_SHOW_UPDATE_HOUR = 0
+
+    if app.show_update_scheduler:
+        app.show_update_scheduler.start_time = datetime.time(hour=app._RECOMMENDED_SHOW_UPDATE_HOUR)
 
 
 def change_SUBTITLES_FINDER_FREQUENCY(subtitles_finder_frequency):
@@ -800,7 +843,8 @@ class ConfigMigrator(object):
             8: 'Convert Plex setting keys',
             9: 'Added setting "enable_manualsearch" for providers (dynamic setting)',
             10: 'Convert all csv config items to lists',
-            11: 'Convert provider ratio type string to int'
+            11: 'Convert provider ratio type string to int',
+            12: 'Add new metadata option overwrite_nfo'
         }
 
     def migrate_config(self):
@@ -1259,3 +1303,26 @@ class ConfigMigrator(object):
                     provider.ratio = -1
                 elif isinstance(provider.ratio, str):
                     provider.ratio = int(provider.ratio)
+
+    def _migrate_v12(self):
+        """Add new option to metadata providers."""
+        def add_new_option(metadata_prov):
+            if len(metadata_prov) == 10:
+                metadata_prov.append(0)
+            return metadata_prov
+
+        app.METADATA_KODI = check_setting_list(app.CFG, 'General', 'metadata_kodi', ['0'] * 11, transform=int)
+        app.METADATA_KODI_12PLUS = check_setting_list(app.CFG, 'General', 'metadata_kodi_12plus', ['0'] * 11, transform=int)
+        app.METADATA_MEDIABROWSER = check_setting_list(app.CFG, 'General', 'metadata_mediabrowser', ['0'] * 11, transform=int)
+        app.METADATA_PS3 = check_setting_list(app.CFG, 'General', 'metadata_ps3', ['0'] * 11, transform=int)
+        app.METADATA_WDTV = check_setting_list(app.CFG, 'General', 'metadata_wdtv', ['0'] * 11, transform=int)
+        app.METADATA_TIVO = check_setting_list(app.CFG, 'General', 'metadata_tivo', ['0'] * 11, transform=int)
+        app.METADATA_MEDE8ER = check_setting_list(app.CFG, 'General', 'metadata_mede8er', ['0'] * 11, transform=int)
+
+        app.METADATA_KODI = add_new_option(app.METADATA_KODI)
+        app.METADATA_KODI_12PLUS = add_new_option(app.METADATA_KODI_12PLUS)
+        app.METADATA_MEDIABROWSER = add_new_option(app.METADATA_MEDIABROWSER)
+        app.METADATA_PS3 = add_new_option(app.METADATA_PS3)
+        app.METADATA_WDTV = add_new_option(app.METADATA_WDTV)
+        app.METADATA_TIVO = add_new_option(app.METADATA_TIVO)
+        app.METADATA_MEDE8ER = add_new_option(app.METADATA_MEDE8ER)

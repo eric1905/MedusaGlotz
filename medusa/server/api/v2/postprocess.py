@@ -51,7 +51,7 @@ class PostProcessHandler(BaseRequestHandler):
         is_priority = bool(data.get('is_priority', False))
         delete_on = bool(data.get('delete_on', False))
         failed = bool(data.get('failed', False))
-        proc_type = bool(data.get('proc_type', False))
+        proc_type = data.get('proc_type', '')
         ignore_subs = bool(data.get('is_priority', False))
 
         if not proc_dir:
@@ -73,7 +73,8 @@ class PostProcessHandler(BaseRequestHandler):
             delete_on=delete_on,
             failed=failed,
             proc_type=proc_type,
-            ignore_subs=ignore_subs
+            ignore_subs=ignore_subs,
+            process_single_resource=True
         )
         app.post_processor_queue_scheduler.action.add_item(queue_item)
 

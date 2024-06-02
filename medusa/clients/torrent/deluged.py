@@ -17,9 +17,11 @@ from deluge_client import DelugeRPCClient
 from medusa import app
 from medusa.clients.torrent.deluge import read_torrent_status
 from medusa.clients.torrent.generic import GenericClient
+from medusa.helper.exceptions import DownloadClientConnectionException
 from medusa.logger.adapters.style import BraceAdapter
 from medusa.schedulers.download_handler import ClientStatus
 
+from requests.exceptions import RequestException
 
 log = BraceAdapter(logging.getLogger(__name__))
 log.logger.addHandler(logging.NullHandler())
@@ -40,6 +42,8 @@ class DelugeDAPI(GenericClient):
         """
         super(DelugeDAPI, self).__init__('DelugeD', host, username, password)
         self.drpc = None
+
+        self._get_auth()
 
     def _get_auth(self):
         return True if self.connect() else None
@@ -157,7 +161,7 @@ class DelugeDAPI(GenericClient):
         if self.connect(True) and self.drpc.test():
             return True, 'Success: Connected and Authenticated'
         else:
-            return False, 'Error: Unable to Authenticate!  Please check your config!'
+            return False, 'Error: Unable to Authenticate! Please check your config!'
 
     def remove_ratio_reached(self):
         """Remove all Medusa torrents that ratio was reached.
@@ -229,8 +233,7 @@ class DelugeDAPI(GenericClient):
         ```
         """
         if not self.connect():
-            log.warning('Error while fetching torrents status')
-            return
+            raise DownloadClientConnectionException(f'Error while fetching torrent info_hash {info_hash}')
 
         torrent = self.drpc._torrent_properties(info_hash)
         if not torrent:
@@ -260,7 +263,8 @@ class DelugeDAPI(GenericClient):
         client_status.progress = int(torrent['progress'])
 
         # Store destination
-        client_status.destination = torrent['download_location']
+        if torrent.get('download_location'):
+            client_status.destination = torrent['download_location']
 
         # Store resource
         client_status.resource = torrent['name']
@@ -298,6 +302,19 @@ class DelugeRPC(object):
             log.warning('Error while trying to connect to deluge daemon. Error: {error}', {'error': error})
             raise
 
+    def get_version(self):
+        """Return the deluge daemon major, minor version as a tuple."""
+        version = None
+        try:
+            version = self.client.daemon.get_version()
+            split_version = version.split('.')[0:2]
+            version = tuple(int(x) for x in split_version)
+        except Exception as error:
+            log.warning('Error while trying to get the deluge daemon version. Error: {error}', {'error': error})
+            raise
+
+        return version
+
     def disconnect(self):
         """Disconnect RPC client."""
         self.client.disconnect()
@@ -310,7 +327,6 @@ class DelugeRPC(object):
         """
         try:
             self.connect()
-            # self._torrent_properties('e4d44da9e71a8f4411bc3fd82aad7689cfa0f07f')
         except Exception:
             return False
         else:
@@ -418,8 +434,12 @@ class DelugeRPC(object):
         """
         try:
             self.connect()
-            self.client.core.set_torrent_move_completed_path(torrent_id, path)
-            self.client.core.set_torrent_move_completed(torrent_id, 1)
+            if self.get_version() >= (2, 0):
+                self.client.core.set_torrent_options(torrent_id, {'completed_path': path})
+                self.client.core.set_torrent_options(torrent_id, {'move_completed': 1})
+            else:
+                self.client.core.set_torrent_move_completed_path(torrent_id, path)
+                self.client.core.set_torrent_move_completed(torrent_id, 1)
         except Exception:
             return False
         else:
@@ -461,9 +481,26 @@ class DelugeRPC(object):
         :rtype: bool
         """
         try:
+            # blank is default client ratio, so we also shouldn't set ratio
             self.connect()
-            self.client.core.set_torrent_stop_at_ratio(torrent_id, True)
-            self.client.core.set_torrent_stop_ratio(torrent_id, ratio)
+            version = self.get_version()
+            if float(ratio) >= 0:
+                if version >= (2, 0):
+                    self.client.core.set_torrent_options(torrent_id, {'stop_at_ratio': True})
+                else:
+                    self.client.core.set_torrent_stop_at_ratio(torrent_id, True)
+
+                if version >= (2, 0):
+                    self.client.core.set_torrent_options(torrent_id, {'stop_ratio': ratio})
+                else:
+                    self.client.core.set_torrent_stop_ratio(torrent_id, ratio)
+
+            elif float(ratio) == -1:
+                # Disable stop at ratio to seed forever
+                if version >= (2, 0):
+                    self.client.core.set_torrent_options(torrent_id, {'stop_at_ratio': False})
+                else:
+                    self.client.core.set_torrent_stop_at_ratio(torrent_id, False)
         except Exception:
             return False
         else:
@@ -537,6 +574,8 @@ class DelugeRPC(object):
             torrent_data = self.client.core.get_torrent_status(
                 info_hash, ('name', 'hash', 'progress', 'state', 'ratio', 'stop_ratio',
                             'is_seed', 'is_finished', 'paused', 'files', 'download_location'))
+        except RequestException as error:
+            raise DownloadClientConnectionException(f'Error while fetching torrent info_hash {info_hash}. Error: {error}')
         except Exception:
             log.warning('Error while fetching torrent {hash} status.', {'hash': info_hash})
             return

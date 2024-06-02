@@ -8,7 +8,7 @@
 
                 <div class="col-xs-12 col-lg-9">
                     <config-template label="Process Method to be used" label-for="process_method">
-                        <select id="process_method" name="process_method" v-model="processMethod" class="form-control input-sm">
+                        <select id="process_method" name="process_method" :value="processMethod" @input="processMethod = $event.target.value" class="form-control input-sm">
                             <option v-for="option in availableMethods" :value="option.value" :key="option.value">
                                 {{option.text}}
                             </option>
@@ -29,7 +29,7 @@
                     </config-toggle-slider>
 
                     <config-toggle-slider v-model="deleteOn" label="Delete files and folders" id="deleteOn">
-                        <span class="smallhelp"><i>&nbsp;(Check this to delete files and folders like auto processing)</i></span>
+                        <span class="smallhelp"><i>&nbsp;(Check this to delete files and folders)</i></span>
                     </config-toggle-slider>
 
                     <config-toggle-slider :disabled="!search.general.failedDownloads.enabled" v-model="failed" label="Mark as failed" id="failed">
@@ -58,7 +58,6 @@
 </template>
 <script>
 import { mapState } from 'vuex';
-import { apiRoute } from '../api';
 import { AppLink, FileBrowser, ConfigTemplate, ConfigToggleSlider } from './helpers';
 
 export default {
@@ -68,6 +67,10 @@ export default {
         FileBrowser,
         ConfigTemplate,
         ConfigToggleSlider
+    },
+    mounted() {
+        this.processMethod = this.postprocessing.processMethod;
+        this.path = this.postprocessing.showDownloadDir;
     },
     data() {
         return {
@@ -88,7 +91,8 @@ export default {
             general: state => state.config.general,
             postprocessing: state => state.config.postprocessing,
             search: state => state.config.search,
-            queueitems: state => state.queue.queueitems
+            queueitems: state => state.queue.queueitems,
+            client: state => state.auth.client
         }),
         availableMethods() {
             const { postprocessing } = this;
@@ -129,7 +133,7 @@ export default {
 
             if (runAsync) {
                 form.set('run_async', true);
-                apiRoute.post('home/postprocess/processEpisode', form)
+                this.client.apiRoute.postForm('home/postprocess/processEpisode', form)
                     .then(response => {
                         if (response && response.data.status === 'success') {
                             this.logs.push(response.data.message.trim());
@@ -142,7 +146,7 @@ export default {
                     });
             } else {
                 form.set('run_sync', true);
-                apiRoute.post('home/postprocess/processEpisode', form)
+                this.client.apiRoute.postForm('home/postprocess/processEpisode', form)
                     .then(response => {
                         if (response && response.data.status === 'success') {
                             this.logs = [...this.logs, ...response.data.output];

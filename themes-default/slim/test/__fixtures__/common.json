@@ -13,11 +13,7 @@
                 "wikiUrl": "https://github.com/pymedusa/Medusa/wiki",
                 "donationsUrl": "https://github.com/pymedusa/Medusa/wiki/Donations",
                 "sourceUrl": "https://github.com/pymedusa/Medusa",
-                "subtitlesMulti": true,
                 "namingForceFolders": false,
-                "subtitles": {
-                    "enabled": true
-                },
                 "recentShows": [
                     {
                         "showSlug": "tvdb253463",
@@ -70,6 +66,39 @@
                     "enable": true,
                     "notifications": true,
                     "timeout": 3
+                },
+                "recommended": {
+                    "cache": {
+                        "shows": true,
+                        "trakt": true,
+                        "imdb": true,
+                        "anidb": true,
+                        "anilist": true
+                    },
+                    "trakt": {
+                        "selectedLists": [
+                            "trending",
+                            "popular",
+                            "anticipated",
+                            "collected",
+                            "watched",
+                            "played",
+                            "recommendations",
+                            "newshow",
+                            "newseason"
+                        ],
+                        "availableLists": [
+                            "trending",
+                            "popular",
+                            "anticipated",
+                            "collected",
+                            "watched",
+                            "played",
+                            "recommendations",
+                            "newshow",
+                            "newseason"
+                        ]
+                    }
                 },
                 "versionNotify": true,
                 "autoUpdate": false,
@@ -195,6 +224,10 @@
                 "backlogOverview": {
                     "status": "all",
                     "period": "all"
+                },
+                "backup": {
+                    "cacheDb": true,
+                    "cacheFiles": true
                 }
             },
             "layout": {
@@ -639,6 +672,7 @@
                 }
             },
             "system": {
+                "configLoaded": true,
                 "memoryUsage": "56.85 MB",
                 "schedulers": [
                     {
@@ -801,6 +835,8 @@
                 ],
                 "webRoot": "",
                 "runsInDocker": false,
+                "newestVersionMessage": "",
+                "ffprobeVersion": "ffprobe not available",
                 "gitRemoteBranches": [
                     "develop",
                     "master"
@@ -843,7 +879,8 @@
                         "episodeThumbnails": true,
                         "seasonPosters": true,
                         "banner": true,
-                        "id": "kodi_12plus"
+                        "id": "kodi_12plus",
+                        "overwriteNfo": true
                     },
                     "kodi": {
                         "seasonAllBanner": false,
@@ -869,7 +906,8 @@
                         "episodeThumbnails": false,
                         "seasonPosters": false,
                         "banner": false,
-                        "id": "kodi"
+                        "id": "kodi",
+                        "overwriteNfo": false
                     },
                     "mediabrowser": {
                         "seasonAllBanner": false,
@@ -895,7 +933,8 @@
                         "episodeThumbnails": false,
                         "seasonPosters": false,
                         "banner": false,
-                        "id": "mediabrowser"
+                        "id": "mediabrowser",
+                        "overwriteNfo": false
                     },
                     "wdtv": {
                         "seasonAllBanner": false,
@@ -921,7 +960,8 @@
                         "episodeThumbnails": false,
                         "seasonPosters": false,
                         "banner": false,
-                        "id": "wdtv"
+                        "id": "wdtv",
+                        "overwriteNfo": false
                     },
                     "tivo": {
                         "seasonAllBanner": false,
@@ -947,7 +987,8 @@
                         "episodeThumbnails": false,
                         "seasonPosters": false,
                         "banner": false,
-                        "id": "tivo"
+                        "id": "tivo",
+                        "overwriteNfo": false
                     },
                     "mede8er": {
                         "seasonAllBanner": false,
@@ -973,7 +1014,8 @@
                         "episodeThumbnails": false,
                         "seasonPosters": false,
                         "banner": false,
-                        "id": "mede8er"
+                        "id": "mede8er",
+                        "overwriteNfo": false
                     },
                     "sony_ps3": {
                         "seasonAllBanner": false,
@@ -999,7 +1041,8 @@
                         "episodeThumbnails": false,
                         "seasonPosters": false,
                         "banner": false,
-                        "id": "sony_ps3"
+                        "id": "sony_ps3",
+                        "overwriteNfo": false
                     }
                 }
             },
@@ -1272,6 +1315,10 @@
                     "minFrequency": 5,
                     "torrentSeedRatio": 1,
                     "torrentSeedAction": "remove"
+                },
+                "ffmpeg": {
+                    "checkStreams": true,
+                    "path": ""
                 }
             },
             "search": {
@@ -1285,8 +1332,6 @@
                     "minBacklogFrequency": 720,
                     "dailySearchFrequency": 10,
                     "minDailySearchFrequency": 10,
-                    "downloadHandlerFrequency": 60,
-                    "mindownloadHandlerFrequency": 30,
                     "usenetRetention": 500,
                     "trackersList": [
                         "udp://tracker.coppersurfer.tk:6969/announce",
@@ -1357,10 +1402,145 @@
                 },
                 "autoAnimeToList": true,
                 "showlistDefaultAnime": "Anime"
+            },
+            "subtitles": {
+                "enabled": true,
+                "languages": [
+                    "eng",
+                    "dut",
+                    "dan"
+                ],
+                "wantedLanguages": [
+                    {
+                        "id": "dan",
+                        "name": "Danish"
+                    },
+                    {
+                        "id": "eng",
+                        "name": "English"
+                    },
+                    {
+                        "id": "dut",
+                        "name": "Dutch"
+                    }
+                ],
+                "codeFilter": [
+                    {
+                        "id": "anp",
+                        "name": "Angika"
+                    },
+                    {
+                        "id": "mis",
+                        "name": "Uncoded languages"
+                    }
+                ],
+                "services": [
+                    {
+                        "name": "addic7ed",
+                        "url": "http://www.addic7ed.com",
+                        "image": "addic7ed.png",
+                        "enabled": true
+                    },
+                    {
+                        "name": "argenteam",
+                        "url": "https://argenteam.net",
+                        "image": "argenteam.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "legendastv",
+                        "url": "http://www.legendas.tv",
+                        "image": "legendastv.png",
+                        "enabled": true
+                    },
+                    {
+                        "name": "napiprojekt",
+                        "url": "http://www.napiprojekt.pl",
+                        "image": "napiprojekt.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "opensubtitles",
+                        "url": "http://www.opensubtitles.org",
+                        "image": "opensubtitles.png",
+                        "enabled": true
+                    },
+                    {
+                        "name": "opensubtitlesvip",
+                        "url": "http://www.opensubtitles.org",
+                        "image": "opensubtitlesvip.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "podnapisi",
+                        "url": "https://www.podnapisi.net",
+                        "image": "podnapisi.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "shooter",
+                        "url": "http://www.shooter.cn",
+                        "image": "shooter.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "subtitulamos",
+                        "url": "https://www.subtitulamos.tv",
+                        "image": "subtitulamos.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "thesubdb",
+                        "url": "http://www.thesubdb.com",
+                        "image": "thesubdb.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "tvsubtitles",
+                        "url": "http://www.tvsubtitles.net",
+                        "image": "tvsubtitles.png",
+                        "enabled": false
+                    },
+                    {
+                        "name": "wizdom",
+                        "url": "http://wizdom.xyz",
+                        "image": "wizdom.png",
+                        "enabled": false
+                    }
+                ],
+                "stopAtFirst": false,
+                "eraseCache": false,
+                "location": "",
+                "finderFrequency": 1,
+                "perfectMatch": false,
+                "logHistory": false,
+                "multiLanguage": false,
+                "keepOnlyWanted": false,
+                "ignoreEmbeddedSubs": false,
+                "acceptUnknownEmbeddedSubs": false,
+                "hearingImpaired": false,
+                "preScripts": [],
+                "extraScripts": [],
+                "wikiUrl": "https://github.com/pymedusa/Medusa/wiki/Subtitle%20Scripts",
+                "providerLogins": {
+                    "addic7ed": {
+                        "user": "",
+                        "pass": ""
+                    },
+                    "legendastv": {
+                        "user": "",
+                        "pass": ""
+                    },
+                    "opensubtitles": {
+                        "user": "",
+                        "pass": ""
+                    }
+                }
             }
         },
         "auth": {
             "isAuthenticated": true,
+            "isConnected": true,
             "user": {
                 "username": "admin"
             }
@@ -1377,6 +1557,9 @@
                     "total": 2
                 }
             }
+        },
+        "socket": {
+            "isConnected": true
         }
     }
 }

@@ -86,6 +86,22 @@ class EpisodePostProcessingFailedException(ApplicationException):
     """
 
 
+class EpisodePostProcessingAbortException(ApplicationException):
+    """
+    The episode post-processing aborted.
+
+    Meaning we should not fail the postprocess and atempt to snatch a new one.
+    """
+
+
+class EpisodePostProcessingPostponedException(ApplicationException):
+    """
+    The episode post-processing delayed.
+
+    Meaning we abort the postprocess and not update the client status if applicable.
+    """
+
+
 class FailedPostProcessingFailedException(ApplicationException):
     """
     The failed post-processing failed
@@ -134,3 +150,11 @@ class AnidbAdbaConnectionException(Exception):
 
     More info on the api: https://wiki.anidb.net/w/API.
     """
+
+
+class CantUpdateRecommendedShowsException(Exception):
+    """The recommended show update could not be started."""
+
+
+class DownloadClientConnectionException(Exception):
+    """Connection exception raised while trying to communicate with the client api."""

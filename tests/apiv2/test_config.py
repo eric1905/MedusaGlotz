@@ -2,17 +2,26 @@
 """Test /config route."""
 from __future__ import unicode_literals
 
+import datetime
 import json
-import platform
 import pkgutil
+import platform
 import sys
 
 from medusa import app, classes, common, db, helpers, logger, metadata
-from medusa.indexers.config import INDEXER_TVDBV2
 from medusa.common import cpu_presets
 from medusa.helpers.utils import int_default
+from medusa.indexers.config import INDEXER_TVDBV2
+from medusa.network_timezones import app_timezone
 from medusa.sbdatetime import date_presets, time_presets
 from medusa.schedulers.utils import all_schedulers
+from medusa.show.recommendations.trakt import TraktPopular
+from medusa.subtitles import (
+    name_from_code,
+    subtitle_code_filter,
+    wanted_languages
+)
+
 from tests.apiv2.conftest import TEST_API_KEY
 
 import pytest
@@ -41,12 +50,10 @@ def config_main(monkeypatch, app_config):
     section_data['wikiUrl'] = app.WIKI_URL
     section_data['donationsUrl'] = app.DONATIONS_URL
     section_data['sourceUrl'] = app.APPLICATION_URL
-    section_data['subtitlesMulti'] = bool(app.SUBTITLES_MULTI)
     section_data['namingForceFolders'] = bool(app.NAMING_FORCE_FOLDERS)
-    section_data['subtitles'] = {}
-    section_data['subtitles']['enabled'] = bool(app.USE_SUBTITLES)
     section_data['recentShows'] = app.SHOWS_RECENT
     section_data['addTitleWithYear'] = bool(app.ADD_TITLE_WITH_YEAR)
+    section_data['brokenProviders'] = [provider for provider in app.BROKEN_PROVIDERS if provider]
 
     # Pick a random series to show as background.
     # TODO: Recreate this in Vue when the webapp has a reliable list of shows to choose from.
@@ -83,6 +90,10 @@ def config_main(monkeypatch, app_config):
 
     section_data['indexerDefaultLanguage'] = app.INDEXER_DEFAULT_LANGUAGE
     section_data['showUpdateHour'] = int_default(app.SHOWUPDATE_HOUR, app.DEFAULT_SHOWUPDATE_HOUR)
+    section_data['recommendedShowUpdateHour'] = int_default(
+        app.RECOMMENDED_SHOW_UPDATE_HOUR, app.DEFAULT_RECOMMENDED_SHOW_UPDATE_HOUR
+    )
+
     section_data['indexerTimeout'] = int_default(app.INDEXER_TIMEOUT, 20)
     section_data['indexerDefault'] = app.INDEXER_DEFAULT
 
@@ -90,6 +101,16 @@ def config_main(monkeypatch, app_config):
     section_data['plexFallBack']['enable'] = bool(app.FALLBACK_PLEX_ENABLE)
     section_data['plexFallBack']['notifications'] = bool(app.FALLBACK_PLEX_NOTIFICATIONS)
     section_data['plexFallBack']['timeout'] = int(app.FALLBACK_PLEX_TIMEOUT)
+
+    section_data['recommended'] = {'cache': {}, 'trakt': {}}
+    section_data['recommended']['cache']['shows'] = bool(app.CACHE_RECOMMENDED_SHOWS)
+    section_data['recommended']['cache']['trakt'] = bool(app.CACHE_RECOMMENDED_TRAKT)
+    section_data['recommended']['cache']['imdb'] = bool(app.CACHE_RECOMMENDED_IMDB)
+    section_data['recommended']['cache']['anidb'] = bool(app.CACHE_RECOMMENDED_ANIDB)
+    section_data['recommended']['cache']['anilist'] = bool(app.CACHE_RECOMMENDED_ANILIST)
+    section_data['recommended']['cache']['purgeAfterDays'] = int(app.CACHE_RECOMMENDED_PURGE_AFTER_DAYS)
+    section_data['recommended']['trakt']['selectedLists'] = app.CACHE_RECOMMENDED_TRAKT_LISTS
+    section_data['recommended']['trakt']['availableLists'] = TraktPopular.CATEGORIES
 
     section_data['versionNotify'] = bool(app.VERSION_NOTIFY)
     section_data['autoUpdate'] = bool(app.AUTO_UPDATE)
@@ -108,6 +129,7 @@ def config_main(monkeypatch, app_config):
     section_data['webInterface']['log'] = bool(app.WEB_LOG)
     section_data['webInterface']['username'] = app.WEB_USERNAME
     section_data['webInterface']['password'] = app.WEB_PASSWORD
+    section_data['webInterface']['host'] = app.WEB_HOST
     section_data['webInterface']['port'] = int_default(app.WEB_PORT, 8081)
     section_data['webInterface']['notifyOnLogin'] = bool(app.NOTIFY_ON_LOGIN)
     section_data['webInterface']['ipv6'] = bool(app.WEB_IPV6)
@@ -135,10 +157,7 @@ def config_main(monkeypatch, app_config):
     section_data['experimental'] = bool(app.EXPERIMENTAL)
 
     section_data['git'] = {}
-    section_data['git']['username'] = app.GIT_USERNAME
-    section_data['git']['password'] = app.GIT_PASSWORD
     section_data['git']['token'] = app.GIT_TOKEN
-    section_data['git']['authType'] = int(app.GIT_AUTH_TYPE)
     section_data['git']['remote'] = app.GIT_REMOTE
     section_data['git']['path'] = app.GIT_PATH
     section_data['git']['org'] = app.GIT_ORG
@@ -151,6 +170,16 @@ def config_main(monkeypatch, app_config):
     section_data['backlogOverview'] = {}
     section_data['backlogOverview']['status'] = app.BACKLOG_STATUS
     section_data['backlogOverview']['period'] = app.BACKLOG_PERIOD
+
+    section_data['providers'] = {}
+    section_data['providers']['prowlarr'] = {}
+    section_data['providers']['prowlarr']['url'] = app.PROWLARR_URL
+    section_data['providers']['prowlarr']['apikey'] = app.PROWLARR_APIKEY
+
+    section_data['backup'] = {}
+    section_data['backup']['cacheDb'] = bool(app.BACKUP_CACHE_DB)
+    section_data['backup']['cacheFiles'] = bool(app.BACKUP_CACHE_FILES)
+
     return section_data
 
 
@@ -172,7 +201,6 @@ async def test_config_get(http_client, create_url, auth_headers, config_main):
 @pytest.mark.gen_test
 @pytest.mark.parametrize('query', [
     'defaultPage',
-    'subtitlesMulti',
     'wikiUrl',
     'sslVerify'
 ])
@@ -237,6 +265,7 @@ async def test_config_get_consts(http_client, create_url, auth_headers):
             'presets': [{'value': 65518, 'key': 'any', 'name': 'ANY'}],
         },
         'statuses': [{'value': 3, 'key': 'wanted', 'name': 'Wanted'}],
+        'clientStatuses': [{'name': 'Snatched', 'value': 0}],
     })
 
     url = create_url('/config/consts')
@@ -257,7 +286,7 @@ async def test_config_get_consts(http_client, create_url, auth_headers):
 @pytest.fixture
 def config_metadata(monkeypatch, app_config):
     # initialize metadata_providers
-    default_config = ['0'] * 10
+    default_config = ['0'] * 11
     providers = [
         (default_config, metadata.kodi),
         (default_config, metadata.kodi_12plus),
@@ -308,6 +337,7 @@ def config_system(monkeypatch):
     monkeypatch.setattr(helpers, 'memory_usage', memory_usage_mock)
 
     section_data = {}
+    section_data['configLoaded'] = True
     section_data['memoryUsage'] = memory_usage_mock()
     section_data['schedulers'] = [{'key': scheduler[0], 'name': scheduler[1]} for scheduler in all_schedulers]
     section_data['showQueue'] = []
@@ -334,6 +364,7 @@ def config_system(monkeypatch):
     section_data['pid'] = app.PID
     section_data['locale'] = '.'.join([text_type(loc or 'Unknown') for loc in app.LOCALE])
     section_data['localUser'] = app.OS_USER or 'Unknown'
+    section_data['timezone'] = app_timezone.tzname(datetime.datetime.now())
     section_data['programDir'] = app.PROG_DIR
     section_data['dataDir'] = app.DATA_DIR
     section_data['configFile'] = app.CONFIG_FILE
@@ -343,6 +374,8 @@ def config_system(monkeypatch):
     section_data['appArgs'] = app.MY_ARGS
     section_data['webRoot'] = app.WEB_ROOT
     section_data['runsInDocker'] = bool(app.RUNS_IN_DOCKER)
+    section_data['newestVersionMessage'] = app.NEWEST_VERSION_STRING
+    section_data['ffprobeVersion'] = 'ffprobe not available'
     section_data['gitRemoteBranches'] = app.GIT_REMOTE_BRANCHES
     section_data['cpuPresets'] = cpu_presets
 
@@ -392,6 +425,7 @@ def config_postprocessing():
     section_data['naming']['animeNamingType'] = int_default(app.NAMING_ANIME, 3)
     section_data['naming']['stripYear'] = bool(app.NAMING_STRIP_YEAR)
     section_data['showDownloadDir'] = app.TV_DOWNLOAD_DIR
+    section_data['defaultClientPath'] = app.DEFAULT_CLIENT_PATH
     section_data['processAutomatically'] = bool(app.PROCESS_AUTOMATICALLY)
     section_data['postponeIfSyncFiles'] = bool(app.POSTPONE_IF_SYNC_FILES)
     section_data['postponeIfNoSubs'] = bool(app.POSTPONE_IF_NO_SUBS)
@@ -405,6 +439,9 @@ def config_postprocessing():
     section_data['deleteRarContent'] = bool(app.DELRARCONTENTS)
     section_data['noDelete'] = bool(app.NO_DELETE)
     section_data['processMethod'] = app.PROCESS_METHOD
+    section_data['specificProcessMethod'] = bool(app.USE_SPECIFIC_PROCESS_METHOD)
+    section_data['processMethodTorrent'] = app.PROCESS_METHOD_TORRENT
+    section_data['processMethodNzb'] = app.PROCESS_METHOD_NZB
     section_data['reflinkAvailable'] = bool(pkgutil.find_loader('reflink'))
     section_data['autoPostprocessorFrequency'] = int(app.AUTOPOSTPROCESSOR_FREQUENCY)
     section_data['syncFiles'] = app.SYNC_FILES
@@ -420,6 +457,10 @@ def config_postprocessing():
     section_data['downloadHandler']['minFrequency'] = int(app.MIN_DOWNLOAD_HANDLER_FREQUENCY)
     section_data['downloadHandler']['torrentSeedRatio'] = float(app.TORRENT_SEED_RATIO) if app.TORRENT_SEED_RATIO is not None else -1
     section_data['downloadHandler']['torrentSeedAction'] = app.TORRENT_SEED_ACTION
+
+    section_data['ffmpeg'] = {}
+    section_data['ffmpeg']['checkStreams'] = bool(app.FFMPEG_CHECK_STREAMS)
+    section_data['ffmpeg']['path'] = app.FFMPEG_PATH
 
     return section_data
 
@@ -462,6 +503,10 @@ def config_clients():
     section_data['torrents']['password'] = app.TORRENT_PASSWORD
     section_data['torrents']['verifySSL'] = bool(app.TORRENT_VERIFY_CERT)
     section_data['torrents']['saveMagnetFile'] = bool(app.SAVE_MAGNET_FILE)
+
+    section_data['rss'] = {}
+    section_data['rss']['dir'] = app.RSS_DIR
+    section_data['rss']['max_items'] = app.RSS_MAX_ITEMS
 
     section_data['nzb'] = {}
     section_data['nzb']['enabled'] = bool(app.USE_NZBS)
@@ -664,6 +709,7 @@ def config_notifiers():
     section_data['discord']['notifyOnSubtitleDownload'] = bool(app.DISCORD_NOTIFY_ONSUBTITLEDOWNLOAD)
     section_data['discord']['webhook'] = app.DISCORD_WEBHOOK
     section_data['discord']['tts'] = bool(app.DISCORD_TTS)
+    section_data['discord']['overrideAvatar'] = bool(app.DISCORD_OVERRIDE_AVATAR)    
     section_data['discord']['name'] = app.DISCORD_NAME
 
     section_data['twitter'] = {}
@@ -685,6 +731,7 @@ def config_notifiers():
     section_data['trakt']['sync'] = bool(app.TRAKT_SYNC)
     section_data['trakt']['syncRemove'] = bool(app.TRAKT_SYNC_REMOVE)
     section_data['trakt']['syncWatchlist'] = bool(app.TRAKT_SYNC_WATCHLIST)
+    section_data['trakt']['syncToWatchlist'] = bool(app.TRAKT_SYNC_TO_WATCHLIST)
     section_data['trakt']['methodAdd'] = int_default(app.TRAKT_METHOD_ADD)
     section_data['trakt']['removeWatchlist'] = bool(app.TRAKT_REMOVE_WATCHLIST)
     section_data['trakt']['removeSerieslist'] = bool(app.TRAKT_REMOVE_SERIESLIST)
@@ -746,8 +793,6 @@ def config_search():
     section_data['general']['minBacklogFrequency'] = int(app.MIN_BACKLOG_FREQUENCY)
     section_data['general']['dailySearchFrequency'] = int_default(app.DAILYSEARCH_FREQUENCY, app.DEFAULT_DAILYSEARCH_FREQUENCY)
     section_data['general']['minDailySearchFrequency'] = int(app.MIN_DAILYSEARCH_FREQUENCY)
-    section_data['general']['downloadHandlerFrequency'] = int_default(app.DOWNLOAD_HANDLER_FREQUENCY, app.DEFAULT_DOWNLOAD_HANDLER_FREQUENCY)
-    section_data['general']['mindownloadHandlerFrequency'] = int(app.MIN_DOWNLOAD_HANDLER_FREQUENCY)
     section_data['general']['usenetRetention'] = int_default(app.USENET_RETENTION, 500)
     section_data['general']['trackersList'] = app.TRACKERS_LIST
     section_data['general']['allowHighPriority'] = bool(app.ALLOW_HIGH_PRIORITY)
@@ -838,6 +883,53 @@ async def test_config_get_layout(http_client, create_url, auth_headers, config_l
     expected = config_layout
 
     url = create_url('/config/layout')
+
+    # when
+    response = await http_client.fetch(url, **auth_headers)
+
+    # then
+    assert response.code == 200
+    assert expected == json.loads(response.body)
+
+
+@pytest.fixture
+def config_subtitles():
+    return {
+        'enabled': bool(app.USE_SUBTITLES),
+        'languages': app.SUBTITLES_LANGUAGES,
+        'wantedLanguages': [{'id': code, 'name': name_from_code(code)}
+                            for code in wanted_languages()],
+        'codeFilter': [{'id': code, 'name': name_from_code(code)}
+                       for code in subtitle_code_filter()],
+        'services': app.SUBTITLE_SERVICES,
+        'stopAtFirst': bool(app.SUBTITLES_STOP_AT_FIRST),
+        'eraseCache': bool(app.SUBTITLES_ERASE_CACHE),
+        'location': app.SUBTITLES_DIR,
+        'finderFrequency': int(app.SUBTITLES_FINDER_FREQUENCY),
+        'perfectMatch': bool(app.SUBTITLES_PERFECT_MATCH),
+        'logHistory': bool(app.SUBTITLES_HISTORY),
+        'multiLanguage': bool(app.SUBTITLES_MULTI),
+        'keepOnlyWanted': bool(app.SUBTITLES_KEEP_ONLY_WANTED),
+        'ignoreEmbeddedSubs': bool(app.IGNORE_EMBEDDED_SUBS),
+        'acceptUnknownEmbeddedSubs': bool(app.ACCEPT_UNKNOWN_EMBEDDED_SUBS),
+        'hearingImpaired': bool(app.SUBTITLES_HEARING_IMPAIRED),
+        'preScripts': app.SUBTITLES_PRE_SCRIPTS,
+        'extraScripts': app.SUBTITLES_EXTRA_SCRIPTS,
+        'wikiUrl': app.SUBTITLES_URL,
+        'providerLogins': {
+            'addic7ed': {'user': app.ADDIC7ED_USER, 'pass': app.ADDIC7ED_PASS},
+            'legendastv': {'user': app.LEGENDASTV_USER, 'pass': app.LEGENDASTV_PASS},
+            'opensubtitles': {'user': app.OPENSUBTITLES_USER, 'pass': app.OPENSUBTITLES_PASS}
+        }
+    }
+
+
+@pytest.mark.gen_test
+async def test_config_get_subtitles(http_client, create_url, auth_headers, config_subtitles):
+    # given
+    expected = config_subtitles
+
+    url = create_url('/config/subtitles')
 
     # when
     response = await http_client.fetch(url, **auth_headers)

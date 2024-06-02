@@ -1,7 +1,5 @@
 <script>
 import { mapState } from 'vuex';
-
-import { webRoot, apiKey } from '../api';
 import { waitFor } from '../utils/core';
 
 export default {
@@ -12,13 +10,15 @@ export default {
     },
     data() {
         return {
-            created: false
+            created: false,
+            wrapper: null
         };
     },
     computed: {
         ...mapState({
             enabled: state => state.config.layout.fanartBackground,
-            opacity: state => state.config.layout.fanartBackgroundOpacity
+            opacity: state => state.config.layout.fanartBackgroundOpacity,
+            apiKey: state => state.auth.apiKey
         }),
         offset() {
             let offset = '90px';
@@ -31,31 +31,47 @@ export default {
             return offset;
         }
     },
-    async mounted() {
-        try {
-            await waitFor(() => this.enabled !== null);
-        } catch (error) {
-            console.error(error);
-        }
+    mounted() {
+        this.setBackStretch();
+    },
+    methods: {
+        async setBackStretch() {
+            try {
+                await waitFor(() => this.enabled !== null);
+            } catch (error) {
+                console.error(error);
+            }
 
-        if (!this.enabled) {
-            return;
-        }
-        const { opacity, slug, offset } = this;
-        if (slug) {
-            const imgUrl = `${webRoot}/api/v2/series/${slug}/asset/fanart?api_key=${apiKey}`;
+            if (!this.enabled) {
+                return;
+            }
+            const { opacity, slug, offset } = this;
+            if (slug) {
+                const imgUrl = `api/v2/series/${slug}/asset/fanart?api_key=${this.apiKey}`;
 
-            // If no element is supplied, attaches to `<body>`
-            const { $wrap } = $.backstretch(imgUrl);
-            $wrap.css('top', offset);
-            $wrap.css('opacity', opacity).fadeIn(500);
-            this.created = true;
+                // If no element is supplied, attaches to `<body>`
+                const { $wrap } = $.backstretch(imgUrl);
+                $wrap.css('top', offset);
+                $wrap.css('opacity', opacity).fadeIn(500);
+                this.created = true;
+                this.wrapper = $wrap;
+            }
+        },
+        removeBackStretch() {
+            if (this.created) {
+                $.backstretch('destroy');
+                this.created = false;
+            }
         }
     },
     destroyed() {
-        if (this.created) {
-            $.backstretch('destroy');
-        }
+        this.removeBackStretch();
+    },
+    activated() {
+        this.setBackStretch();
+    },
+    deactivated() {
+        this.removeBackStretch();
     },
     watch: {
         opacity(newOpacity) {

@@ -21,7 +21,9 @@ from medusa import (
     name_cache,
     notifiers,
     ui,
+    ws
 )
+from medusa.clients import rss
 from medusa.clients import torrent
 from medusa.clients.nzb import (
     nzbget,
@@ -140,6 +142,8 @@ def snatch_result(result):
     if result.result_type in (u'nzb', u'nzbdata'):
         if app.NZB_METHOD == u'blackhole':
             result_downloaded = _download_result(result)
+        elif app.NZB_METHOD == u'rss':
+            result_downloaded = rss.add_result_to_feed(result)
         elif app.NZB_METHOD == u'sabnzbd':
             result_downloaded = sab.send_nzb(result)
         elif app.NZB_METHOD == u'nzbget':
@@ -154,6 +158,8 @@ def snatch_result(result):
         # Handle SAVE_MAGNET_FILE
         if app.TORRENT_METHOD == u'blackhole':
             result_downloaded = _download_result(result)
+        elif app.TORRENT_METHOD == u'rss':
+            result_downloaded = rss.add_result_to_feed(result)
         else:
             if not result.content and not result.url.startswith(u'magnet:'):
                 if result.provider.login():
@@ -224,6 +230,9 @@ def snatch_result(result):
             cur_ep_obj.manually_searched = result.manually_searched
 
             sql_l.append(cur_ep_obj.get_sql())
+
+            # Push an update with the updated episode to any open Web UIs through the WebSocket
+            ws.Message('episodeUpdated', cur_ep_obj.to_json()).push()
 
         if cur_ep_obj.status != common.DOWNLOADED:
             notifiers.notify_snatch(cur_ep_obj, result)
@@ -724,7 +733,7 @@ def search_providers(series_obj, episodes, forced_search=False, down_cur_quality
                     multi_results, single_results = collect_candidates(
                         found_results, cur_provider, multi_results, single_results
                     )
-                    found_eps = itertools.chain(*(result.episodes for result in multi_results + single_results))
+                    found_eps = itertools.chain(*(result.episodes for result in multi_results + single_results if result.episodes))
                     needed_eps = [ep for ep in episodes if ep not in found_eps]
 
             except AuthException as error:
@@ -760,8 +769,8 @@ def search_providers(series_obj, episodes, forced_search=False, down_cur_quality
             else:
                 searched_episode_list = [episode_obj.episode for episode_obj in episodes] + [MULTI_EP_RESULT]
             for searched_episode in searched_episode_list:
-                if (searched_episode in search_results and
-                        cur_provider.cache.update_cache_manual_search(search_results[searched_episode])):
+                if (searched_episode in search_results
+                        and cur_provider.cache.update_cache_manual_search(search_results[searched_episode])):
                     # If we have at least a result from one provider, it's good enough to be marked as result
                     manual_search_results.append(True)
             # Continue because we don't want to pick best results as we are running a manual search by user

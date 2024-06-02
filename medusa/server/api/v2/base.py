@@ -96,12 +96,13 @@ class BaseRequestHandler(RequestHandler):
             return
 
         authorization = self.request.headers.get('Authorization')
-        if not authorization:
+        x_auth = self.request.headers.get('x-auth')
+        if not authorization and not x_auth:
             return self._unauthorized('No authorization token.')
 
-        if authorization.startswith('Bearer'):
+        if x_auth and x_auth.startswith('Bearer'):
             try:
-                token = authorization.replace('Bearer ', '')
+                token = x_auth.replace('Bearer ', '')
                 jwt.decode(token, app.ENCRYPTION_SECRET, algorithms=['HS256'])
             except jwt.ExpiredSignatureError:
                 return self._unauthorized('Token has expired.')
@@ -327,14 +328,14 @@ class BaseRequestHandler(RequestHandler):
         except ValueError:
             self._raise_bad_request_error('Invalid limit parameter')
 
-    def _paginate(self, data=None, data_generator=None, sort=None):
+    def _paginate(self, data=None, data_generator=None, sort=None, headers={}):
         arg_page = self._get_page()
         arg_limit = self._get_limit()
 
-        headers = {
+        headers.update({
             'X-Pagination-Page': arg_page,
             'X-Pagination-Limit': arg_limit
-        }
+        })
 
         first_page = arg_page if arg_page > 0 else 1
         previous_page = None if arg_page <= 1 else arg_page - 1
@@ -607,6 +608,7 @@ class MetadataStructureField(PatchField):
             'sony_ps3': ListField(app, 'METADATA_PS3'),
             'tivo': ListField(app, 'METADATA_TIVO'),
             'wdtv': ListField(app, 'METADATA_WDTV'),
+            'plex': ListField(app, 'METADATA_PLEX'),
         }
 
         map_values = OrderedDict([
@@ -620,6 +622,7 @@ class MetadataStructureField(PatchField):
             ('seasonBanners', 'season_banners'),
             ('seasonAllPoster', 'season_all_poster'),
             ('seasonAllBanner', 'season_all_banner'),
+            ('overwriteNfo', 'overwrite_nfo'),
         ])
 
         try:

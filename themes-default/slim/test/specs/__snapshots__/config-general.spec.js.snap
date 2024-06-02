@@ -89,7 +89,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="default_page"
                 >
                   <select
-                    class="form-control input-sm"
+                    class="form-control input-sm max-input350"
                     id="default_page"
                     name="default_page"
                   >
@@ -234,7 +234,6 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                 </config-template-stub>
                  
                 <config-toggle-slider-stub
-                  experimental="true"
                   explanations=""
                   id="add_title_year"
                   label="Append (year) to each show title"
@@ -253,6 +252,96 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   type="submit"
                   value="Save Changes"
                 />
+              </fieldset>
+            </div>
+          </div>
+           
+          <div
+            class="row component-group"
+          >
+            <div
+              class="component-group-desc col-xs-12 col-md-2"
+            >
+              <h3
+                style="word-break: break-word;"
+              >
+                Recommended shows
+              </h3>
+               
+              <p>
+                Options for controlling the caching of recommended shows.
+              </p>
+            </div>
+             
+            <div
+              class="col-xs-12 col-md-10"
+            >
+              <fieldset
+                class="component-group-list"
+              >
+                <config-toggle-slider-stub
+                  explanations=""
+                  id="cache_rec_shows"
+                  label="Cache recommended shows"
+                  value="true"
+                >
+                  <p>
+                    Enabling recommended shows, will cache recommended shows on a daily interval.
+                  </p>
+                </config-toggle-slider-stub>
+                 
+                <config-toggle-slider-stub
+                  explanations=""
+                  id="cache_rec_trakt"
+                  label="Cache Trakt lists"
+                  value="true"
+                />
+                 
+                <config-template-stub
+                  label="Trakt enabled lists"
+                  labelfor="trakt_selected_lists"
+                >
+                  <select-trakt-lists-stub />
+                </config-template-stub>
+                 
+                <config-toggle-slider-stub
+                  explanations=""
+                  id="cache_rec_imdb"
+                  label="Cache Imdb lists"
+                  value="true"
+                />
+                 
+                <config-toggle-slider-stub
+                  explanations=""
+                  id="cache_rec_anidb"
+                  label="Cache Anidb lists"
+                  value="true"
+                />
+                 
+                <config-toggle-slider-stub
+                  explanations=""
+                  id="cache_rec_anilist"
+                  label="Cache AniList lists"
+                  value="true"
+                />
+                 
+                <config-textbox-number-stub
+                  explanations=""
+                  id="cache_purge_days"
+                  inputclass="form-control input-sm input75"
+                  label="Purge shows from db after x days"
+                  min="0"
+                  placeholder=""
+                  step="1"
+                  value="10"
+                >
+                  <p>
+                    Number of days to keep shows in the cache (default: 180) 
+                    <b>
+                      (0 will not purge shows at all)
+                    </b>
+                  </p>
+                </config-textbox-number-stub>
               </fieldset>
             </div>
           </div>
@@ -336,7 +425,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="indexer_default"
                 >
                   <select
-                    class="form-control input-sm"
+                    class="form-control input-sm max-input350"
                     id="indexer_default"
                     name="indexer_default"
                   >
@@ -520,7 +609,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="theme_name"
                 >
                   <select
-                    class="form-control input-sm"
+                    class="form-control input-sm max-input350"
                     id="theme_name"
                     name="theme_name"
                   >
@@ -653,7 +742,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="date_preset"
                 >
                   <select
-                    class="form-control input-sm"
+                    class="form-control input-sm max-input350"
                     id="date_preset"
                     name="date_preset"
                   >
@@ -703,6 +792,8 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                       Thu, 11/21/2019
                     </option>
                   </select>
+                   
+                  <!---->
                 </config-template-stub>
                  
                 <config-template-stub
@@ -710,7 +801,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="time_preset"
                 >
                   <select
-                    class="form-control input-sm"
+                    class="form-control input-sm max-input350"
                     id="time_preset"
                     name="time_preset"
                   >
@@ -931,7 +1022,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   value="true"
                 >
                   <p>
-                    enable to be notified when a new login happens in webserver
+                    enable to listen for connections on IPv6
                   </p>
                 </config-toggle-slider-stub>
                  
@@ -1020,7 +1111,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="cpu_presets"
                 >
                   <select
-                    class="form-control input-sm"
+                    class="form-control input-sm max-input350"
                     id="cpu_presets"
                     name="cpu_presets"
                   >
@@ -1198,7 +1289,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="ep_default_deleted_status"
                 >
                   <select
-                    class="form-control input-sm margin-bottom-5"
+                    class="form-control input-sm margin-bottom-5 max-input350"
                     id="ep_default_deleted_status"
                     name="ep_default_deleted_status"
                   >
@@ -1314,7 +1405,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="privacy_level"
                 >
                   <select
-                    class="form-control input-sm"
+                    class="form-control input-sm max-input350"
                     id="privacy_level"
                     name="privacy_level"
                   >
@@ -1385,7 +1476,7 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   labelfor="github_remote_branches"
                 >
                   <select
-                    class="form-control input-sm margin-bottom-5"
+                    class="form-control input-sm margin-bottom-10 max-input350"
                     id="github_remote_branches"
                     name="github_remote_branches"
                   >
@@ -1406,7 +1497,6 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   <input
                     class="btn-medusa btn-inline"
                     id="branchCheckout"
-                    style="margin-left: 6px;"
                     type="button"
                     value="Checkout Branch"
                   />
@@ -1418,150 +1508,74 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   <!---->
                 </config-template-stub>
                  
-                <config-template-stub
-                  label="GitHub authentication type"
-                  labelfor="date_presets"
+                <config-textbox-stub
+                  explanations=""
+                  id="git_token"
+                  inputclass="display-inline form-control input-sm max-input350"
+                  label="GitHub personal access token"
+                  placeholder=""
+                  type="text"
+                  value=""
                 >
-                  <div
-                    class="radio-item"
+                  <v-popover-stub
+                    autohide="true"
+                    container="body"
+                    delay="0"
+                    handleresize="true"
+                    offset="16"
+                    openclass="open"
+                    placement="right"
+                    popoverarrowclass="tooltip-arrow popover-arrow"
+                    popoverbaseclass="tooltip-base"
+                    popoverclass="tooltip-themed-light"
+                    popoverinnerclass="tooltip-inner popover-inner"
+                    popoverwrapperclass="wrapper"
+                    popperoptions="[object Object]"
+                    trigger="click"
                   >
                     <input
-                      id="git_auth_type_basic"
-                      name="git_auth_type_basic"
-                      type="radio"
-                      value="0"
+                      class="btn-medusa btn-inline"
+                      id="create_access_token"
+                      style="margin-top: 10px;"
+                      type="button"
+                      value="Generate Token"
                     />
                      
-                    <label
-                      for="one"
-                    >
-                      Username and password
-                    </label>
-                  </div>
-                   
-                  <div
-                    class="radio-item"
-                  >
-                    <input
-                      id="git_auth_type_token"
-                      name="git_auth_type_token"
-                      type="radio"
-                      value="1"
-                    />
-                     
-                    <label
-                      for="one"
-                    >
-                      Personal access token
-                    </label>
-                  </div>
+                    <template>
+                      <div
+                        class="tooltip-title"
+                      >
+                        Github Token
+                      </div>
+                       
+                      <div
+                        class="tooltip-content"
+                      >
+                        <p>
+                          Copy the generated token and paste it in the token input box.
+                        </p>
+                         
+                        <p>
+                          <a
+                            href="http://dereferer.org/?https://github.com/settings/tokens/new?description=Medusa&scopes=gist,public_repo"
+                            target="_blank"
+                          >
+                            <input
+                              class="btn-medusa"
+                              type="button"
+                              value="Continue to Github..."
+                            />
+                          </a>
+                        </p>
+                        <br />
+                      </div>
+                    </template>
+                  </v-popover-stub>
                    
                   <p>
-                    You must use a personal access token if you're using "two-factor authentication" on GitHub.
+                    *** (REQUIRED FOR SUBMITTING ISSUES) ***
                   </p>
-                </config-template-stub>
-                 
-                <div>
-                  <config-textbox-stub
-                    explanations=""
-                    id="git_username"
-                    inputclass="form-control input-sm max-input350"
-                    label="GitHub username"
-                    placeholder=""
-                    type="text"
-                    value=""
-                  >
-                    <p>
-                      *** (REQUIRED FOR SUBMITTING ISSUES) ***
-                    </p>
-                  </config-textbox-stub>
-                   
-                  <config-textbox-stub
-                    explanations=""
-                    id="git_password"
-                    inputclass="form-control input-sm max-input350"
-                    label="GitHub password"
-                    placeholder=""
-                    type="password"
-                    value=""
-                  >
-                    <p>
-                      *** (REQUIRED FOR SUBMITTING ISSUES) ***
-                    </p>
-                  </config-textbox-stub>
-                </div>
-                 
-                <div
-                  style="display: none;"
-                >
-                  <config-textbox-stub
-                    explanations=""
-                    id="git_token"
-                    inputclass="display-inline margin-bottom-5"
-                    label="GitHub personal access token"
-                    placeholder=""
-                    type="text"
-                    value=""
-                  >
-                    <v-popover-stub
-                      autohide="true"
-                      container="body"
-                      delay="0"
-                      handleresize="true"
-                      offset="16"
-                      openclass="open"
-                      placement="right"
-                      popoverarrowclass="tooltip-arrow popover-arrow"
-                      popoverbaseclass="tooltip-base"
-                      popoverclass="tooltip-themed-light"
-                      popoverinnerclass="tooltip-inner popover-inner"
-                      popoverwrapperclass="wrapper"
-                      popperoptions="[object Object]"
-                      trigger="click"
-                    >
-                      <input
-                        class="btn-medusa btn-inline"
-                        id="create_access_token"
-                        type="button"
-                        value="Generate Token"
-                      />
-                       
-                      <template>
-                        <div
-                          class="tooltip-title"
-                        >
-                          Github Token
-                        </div>
-                         
-                        <div
-                          class="tooltip-content"
-                        >
-                          <p>
-                            Copy the generated token and paste it in the token input box.
-                          </p>
-                           
-                          <p>
-                            <a
-                              href="http://dereferer.org/?https://github.com/settings/tokens/new?description=Medusa&scopes=gist,public_repo"
-                              target="_blank"
-                            >
-                              <input
-                                class="btn-medusa"
-                                type="button"
-                                value="Continue to Github..."
-                              />
-                            </a>
-                          </p>
-                          <br />
-                        </div>
-                      </template>
-                    </v-popover-stub>
-                     
-                    <p>
-                      *** (REQUIRED FOR SUBMITTING ISSUES) ***
-                    </p>
-                  </config-textbox-stub>
-                </div>
+                </config-textbox-stub>
                  
                 <config-textbox-stub
                   explanations=""
@@ -1609,14 +1623,15 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   <multiselect-stub
                     allowempty="true"
                     blockkeys=""
+                    class="max-input350"
                     clearonselect="true"
                     closeonselect="true"
-                    customlabel="function(t,e){return i(t)?\\"\\":e?t[e]:t}"
+                    customlabel="[Function]"
                     deselectgrouplabel="Press enter to deselect group"
                     deselectlabel="Press enter to remove"
                     internalsearch="true"
                     limit="99999"
-                    limittext="function(t){return\\"and \\".concat(t,\\" more\\")}"
+                    limittext="[Function]"
                     maxheight="300"
                     multiple="true"
                     name=""
@@ -1642,7 +1657,6 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                   <input
                     class="btn-medusa btn-inline"
                     id="branch_force_update"
-                    style="margin-left: 6px;"
                     type="button"
                     value="Update Branches"
                   />
@@ -1654,6 +1668,72 @@ exports[`ConfigGeneral.test.js renders 1`] = `
                      Empty selection means that any branch could be reset.
                   </span>
                 </config-template-stub>
+                 
+                <input
+                  class="btn-medusa config_submitter"
+                  type="submit"
+                  value="Save Changes"
+                />
+              </fieldset>
+            </div>
+          </div>
+           
+          <div
+            class="row component-group"
+          >
+            <div
+              class="component-group-desc col-xs-12 col-md-2"
+            >
+              <h3>
+                Backup
+              </h3>
+            </div>
+             
+            <div
+              class="col-xs-12 col-md-10"
+            >
+              <fieldset
+                class="component-group-list"
+              >
+                <config-toggle-slider-stub
+                  explanations=""
+                  id="cache_db"
+                  label="Backup cache related databases"
+                  value="true"
+                >
+                  <p>
+                    Include cache.db, failed.db, and recommended.db to the backup.
+                  </p>
+                   
+                  <p>
+                    <span
+                      style="color: red;"
+                    >
+                      Note!
+                    </span>
+                     These files are not mandatory for a proper restore, but could potentially cause timeouts when backing up or trying to update medusa.
+                  </p>
+                </config-toggle-slider-stub>
+                 
+                <config-toggle-slider-stub
+                  explanations=""
+                  id="cache_files"
+                  label="Backup the cache folder (excluding the images)"
+                  value="true"
+                >
+                  <p>
+                    Include everything in the cache folder to the backup.
+                  </p>
+                   
+                  <p>
+                    <span
+                      style="color: red;"
+                    >
+                      Note!
+                    </span>
+                     These files are not mandatory for a proper restore, but could potentially cause timeouts when backing up or trying to update medusa.
+                  </p>
+                </config-toggle-slider-stub>
                  
                 <input
                   class="btn-medusa config_submitter"

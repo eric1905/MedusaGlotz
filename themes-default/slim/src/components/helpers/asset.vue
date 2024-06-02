@@ -2,18 +2,18 @@
     <div v-if="!lazy" style="display: inherit">
         <img v-if="!link" v-bind="{ src, class: cls, class: newCls }" @error="error = true">
         <app-link v-else :href="href">
-            <img v-bind="{ src, class: newCls }" @error="error = true">
+            <img v-bind="{ src, class: newCls, style: imgStyle }" @error="error = true">
         </app-link>
     </div>
     <div v-else style="display: inherit">
-        <lazy-image v-if="!link" :lazy-src="src" :lazy-cls="newCls" :lazy-default-src="defaultSrc" />
+        <lazy-image v-if="!link" :lazy-src="src" :lazy-cls="newCls" :lazy-default-src="defaultSrc" :lazy-width="imgWidth" />
         <app-link v-else :href="href">
             <lazy-image :lazy-src="src" :lazy-cls="newCls" :lazy-default-src="defaultSrc" />
         </app-link>
     </div>
 </template>
 <script>
-import { webRoot, apiKey } from '../../api';
+import { mapState } from 'vuex';
 import AppLink from './app-link.vue';
 import LazyImage from './lazy-image.vue';
 
@@ -24,9 +24,7 @@ export default {
         LazyImage
     },
     props: {
-        showSlug: {
-            type: String
-        },
+        showSlug: String,
         type: {
             type: String,
             required: true
@@ -39,13 +37,10 @@ export default {
             type: Boolean,
             default: false
         },
-        cls: {
-            type: String
-        },
-        imgWidth: {
-            type: Number
-        },
-        lazy: Boolean
+        cls: String,
+        imgWidth: Number,
+        lazy: Boolean,
+        imgStyle: String
     },
     data() {
         return {
@@ -53,14 +48,17 @@ export default {
         };
     },
     computed: {
+        ...mapState({
+            apiKey: state => state.auth.apiKey
+        }),
         src() {
-            const { defaultSrc, error, showSlug, type } = this;
+            const { apiKey, defaultSrc, error, showSlug, type } = this;
 
             if (error || !showSlug || !type) {
                 return defaultSrc;
             }
 
-            return `${webRoot}/api/v2/series/${showSlug}/asset/${type}?api_key=${apiKey}`;
+            return `api/v2/series/${showSlug}/asset/${type}?api_key=${apiKey}`;
         },
         href() {
             const { link, src } = this;
@@ -79,6 +77,18 @@ export default {
             }
 
             return newClass;
+        },
+        newStyle() {
+            const { imgWidth, imgStyle } = this;
+            let tempStyle = '';
+            if (imgStyle) {
+                tempStyle = imgStyle;
+            }
+
+            if (imgWidth) {
+                tempStyle += `;width=${imgWidth}px`;
+            }
+            return tempStyle;
         }
     }
 };

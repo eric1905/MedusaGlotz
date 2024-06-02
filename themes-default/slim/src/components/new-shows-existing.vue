@@ -110,7 +110,6 @@
 
 <script>
 import Vue from 'vue';
-import { api } from '../api';
 import { mapState } from 'vuex';
 import RootDirs from './root-dirs.vue';
 import { AddShowOptions, NewShow } from '.';
@@ -119,6 +118,7 @@ import { VueTabs, VTab } from 'vue-nav-tabs/dist/vue-tabs.js';
 import { ToggleButton } from 'vue-js-toggle-button';
 
 export default {
+    name: 'new-show-existing',
     components: {
         AddShowOptions,
         AppLink,
@@ -129,9 +129,6 @@ export default {
     },
     data() {
         return {
-            // @FIXME: Python conversions (fix when config is loaded before routes)
-            // indexers: ${json.dumps(indexers)},
-
             isLoading: false,
             requestTimeout: 3 * 60 * 1000,
             errorMessage: '',
@@ -163,10 +160,10 @@ export default {
     },
     computed: {
         ...mapState({
-            config: state => state.config.general, // Used by `inc_addShowOptions.mako`
             indexers: state => state.config.indexers,
             indexerDefault: state => state.config.general.indexerDefault,
-            queueitems: state => state.shows.queueitems
+            queueitems: state => state.shows.queueitems,
+            client: state => state.auth.client
         }),
         selectedRootDirs() {
             return this.rootDirs.filter(rd => rd.selected);
@@ -243,7 +240,7 @@ export default {
             });
         },
         update() {
-            const { indexerDefault } = this;
+            const { client, indexerDefault } = this;
 
             if (this.isLoading) {
                 return;
@@ -271,7 +268,7 @@ export default {
                 },
                 timeout: this.requestTimeout
             };
-            api.get('internal/existingSeries', config).then(response => {
+            client.api.get('internal/existingSeries', config).then(response => {
                 const { data } = response;
                 this.dirList = data
                     .map(dir => {
@@ -314,15 +311,19 @@ export default {
          * @returns {void}
          */
         submitSeriesDirs() {
-            const dirList = this.filteredDirList.filter(dir => dir.selected);
-            if (dirList.length === 0) {
+            const checkedDirs = this.filteredDirList.filter(dir => dir.selected);
+            if (checkedDirs.length === 0) {
                 return false;
             }
 
-            for (const [curDirIndex] of dirList.entries()) {
+            this.filteredDirList.forEach((filteredDir, idx) => {
                 // Loop through the existing shows.
-                this.openAddNewShow(curDirIndex, true);
-            }
+                checkedDirs.forEach(checkedDir => {
+                    if (checkedDir.path === filteredDir.path) {
+                        this.openAddNewShow(idx, true);
+                    }
+                });
+            });
         },
         updateOptions(options) {
             // Update seleted options from add-show-options.vue @change event.
@@ -388,7 +389,7 @@ export default {
                 parent: this
             });
 
-            // Bind the 'added' event, as through that we receive the addShow queueitem.
+            // Bind the 'added' event to the newShow vm.
             instance.$on('added', queueitem => {
                 this.addedShowQueueItems.push(queueitem);
                 this.closeAddShowComponent(queueitem.providedInfo.curDirIndex);

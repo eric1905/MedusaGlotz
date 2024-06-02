@@ -6,15 +6,17 @@ from __future__ import unicode_literals
 
 import logging
 import os
-import time
+from os.path import basename
 
 from medusa import app
 from medusa.clients.torrent.generic import GenericClient
+from medusa.helper.exceptions import DownloadClientConnectionException
 from medusa.logger.adapters.style import BraceAdapter
 from medusa.schedulers.download_handler import ClientStatus
 
 from requests.auth import HTTPDigestAuth
 from requests.compat import urljoin
+from requests.exceptions import RequestException
 
 import ttl_cache
 
@@ -45,6 +47,7 @@ class QBittorrentAPI(GenericClient):
         self.session.auth = HTTPDigestAuth(self.username, self.password)
 
         self.api = None
+        self._get_auth()
 
     def _get_auth(self):
         """Authenticate with the client using the most recent API version available for use."""
@@ -64,9 +67,7 @@ class QBittorrentAPI(GenericClient):
             self.url = urljoin(self.host, 'api/v2/app/webapiVersion')
             try:
                 response = self.session.get(self.url, verify=app.TORRENT_VERIFY_CERT)
-                if not response:
-                    raise ValueError('No response from qbittorrent client')
-                if not response.text:
+                if not response or not response.text:
                     raise ValueError('Response from client is empty. [Status: {0}]'.format(response.status_code))
                 # Make sure version is using the (major, minor, release) format
                 version = tuple(map(int, response.text.split('.')))
@@ -112,7 +113,6 @@ class QBittorrentAPI(GenericClient):
                 return None
 
             # Successful log in
-            self.session.cookies = self.response.cookies
             self.auth = self.response.text
 
             return self.auth
@@ -296,6 +296,9 @@ class QBittorrentAPI(GenericClient):
     def _get_torrents(self, filter=None, category=None, sort=None):
         """Get all torrents from qbittorrent api."""
         params = {}
+        if not self.api:
+            raise DownloadClientConnectionException('Error while fetching torrent. Not authenticated.')
+
         if self.api >= (2, 0, 0):
             self.url = urljoin(self.host, 'api/v2/torrents/info')
             if filter:
@@ -307,9 +310,12 @@ class QBittorrentAPI(GenericClient):
         else:
             self.url = urljoin(self.host, 'json/torrents')
 
-        if not self._request(method='get', params=params, cookies=self.session.cookies):
-            log.warning('Error while fetching torrents.')
-            return []
+        try:
+            if not self._request(method='get', params=params, cookies=self.session.cookies):
+                log.warning('Error while fetching torrents.')
+                return []
+        except RequestException as error:
+            raise DownloadClientConnectionException(f'Error while fetching torrent. Error: {error}')
 
         return self.response.json()
 
@@ -380,14 +386,6 @@ class QBittorrentAPI(GenericClient):
 
     def get_status(self, info_hash):
         """Return torrent status."""
-        # Set up the auth. We need it in the following methods.
-        if time.time() > self.last_time + 1800 or not self.auth:
-            self.last_time = time.time()
-            self._get_auth()
-
-        if not self.auth:
-            return
-
         torrent = self._torrent_properties(info_hash)
         if not torrent:
             return
@@ -413,16 +411,17 @@ class QBittorrentAPI(GenericClient):
         client_status.ratio = torrent['ratio'] * 1.0
 
         # Store progress
-        client_status.progress = int(torrent['downloaded'] / torrent['size'] * 100)
+        client_status.progress = int(torrent['downloaded'] / torrent['size'] * 100) if torrent['size'] else 0
 
         # Store destination
         client_status.destination = torrent['save_path']
 
-        # Store resource
-        client_status.resource = torrent['name']
+        if torrent.get('content_path'):
+            # Store resource
+            client_status.resource = basename(torrent['content_path'])
 
         log.info('Qbittorrent torrent: [{name}] using state: [{state}]', {
-            'name': torrent['name'], 'state': torrent['state']
+            'name': client_status.resource, 'state': torrent['state']
         })
 
         return client_status

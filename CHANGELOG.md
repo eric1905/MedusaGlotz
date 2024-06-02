@@ -1,10 +1,549 @@
-## Unreleased
-
-#### New Features
+## 1.0.21 (03-04-2024)
 
 #### Improvements
+- Add testing for providers requiring authorization (Thanks to @k0mmsussert0d)
+- Add many network timezones (Thanks to @YogSottot)
 
 #### Fixes
+- Fix file browser not displaying correctly
+
+-----
+
+## 1.0.20 (27-03-2024)
+
+#### Improvements
+- Add many network timezones (Thanks to @YogSottot)
+- Update Python and JS dependencies
+
+#### Fixes
+- Correctly refresh exceptions cache (Thanks to @j-aub)
+- Update Trakt API endpoint (Thanks to @XxUnkn0wnxX and farni)
+- Fix occasional search issues with BTN provider
+
+-----
+
+## 1.0.19 (12-12-2023)
+
+#### Improvements
+- Add many network timezones (Thanks to @YogSottot)
+- Add a few new logos (Thanks to @purevertigo)
+- Update some Python dependencies
+
+#### Fixes
+- Add try/catch block around localStorage.setItem call (Thanks to @dotsam)
+- Validate webhook URL for Slack and Discord (Thanks to @sylwia-budzynska)
+
+-----
+
+## 1.0.18 (29-10-2023)
+
+#### Improvements
+- Update some JS and Python dependencies
+- Add a few new logos (Thanks to @purevertigo)
+- Update Yggtorrent domain (Thanks to @cpainchaud)
+
+#### Fixes
+- Don't overwrite manual post-processing delete preference
+- Fix color of show-header in light theme (Thanks to @cheese1)
+
+-----
+
+## 1.0.17 (29-06-2023)
+
+#### New Features
+- Add TheOldSchool torrent provider (Thanks to @IamMika23)
+
+#### Improvements
+- Update IPTorrents default domain
+- Update many dependencies
+
+#### Fixes
+- Fix saving order of various tables
+
+-----
+
+## 1.0.16 (27-05-2023)
+
+#### Improvements
+- Raise warning when TVDB returns malformed data
+- Update many JavaScript and Python dependencies
+
+-----
+
+## 1.0.15 (21-05-2023)
+
+#### Fixes
+- Fix error with malformed TVDB data missing links
+
+-----
+
+## 1.0.14 (20-05-2023)
+
+#### Improvements
+- Update requests dependencies
+- Update YggTorrent domain (Thanks to @cpainchaud)
+- Add new logos for networks (Thanks to @purevertigo)
+- Add missing time zone for networks (Thanks to @YogSottot)
+
+#### Fixes
+- Fix endless loop caused by malformed TVDB data (Thanks to @dotsam)
+
+-----
+
+## 1.0.13 (22-03-2023)
+
+#### Improvements
+- Replace trakt with pytrakt
+
+#### Fixes
+- Fix git subprocess call for Windows paths with spaces
+
+-----
+
+## 1.0.12 (03-03-2023)
+
+#### New Features
+- Add RSS Feed Client (Thanks to @sawyersteven)
+
+#### Improvements
+- Update many Python dependencies
+
+#### Fixes
+- Ensure that git_path is a valid file (Thanks to @pizza-power)
+- Avoid exception when the filepart doesn't match a season
+- Encode NZBGet username, password and host
+
+-----
+
+## 1.0.11 (14-01-2023)
+
+#### Improvements
+- Put showid search results on top
+- Change missing directory log level to debug
+
+#### Fixes
+- Fix parsing for shows that have year in the title
+
+-----
+
+## 1.0.10 (15-12-2022)
+
+#### Improvements
+- Add TVNZ 1 logo
+- Add compatibility to Python 3.11
+- Allow to add scene exception to force exact show title match
+
+#### Fixes
+- Set english language in requests header for Addic7ed subs provider
+- Avoid error when post-processing path is None
+- Fix error log when ffmpeg doesn't detect audio or video
+
+-----
+
+## 1.0.9 (11-10-2022)
+
+#### Improvements
+- Always get current version on startup ([10925](https://github.com/pymedusa/Medusa/pull/10925))
+- Remove copy fallback when hardlink failed ([10952](https://github.com/pymedusa/Medusa/pull/10952))
+- Change log level to info for episodes not in DVD order ([10872](https://github.com/pymedusa/Medusa/pull/10872))
+- Update M-net logo ([10937](https://github.com/pymedusa/Medusa/pull/10937))
+
+#### Fixes
+- Normalize the imdb_id ([10923](https://github.com/pymedusa/Medusa/pull/10923))
+- Replace non-UTF8 chars instead of error for Plexmatch file ([10948](https://github.com/pymedusa/Medusa/pull/10948))
+- Fix Download Handler log filter ([10953](https://github.com/pymedusa/Medusa/pull/10953))
+
+-----
+
+## 1.0.8 (05-09-2022)
+
+#### Fixes
+- Catch exception when we can't translate a title to imdb_id. ([10912](https://github.com/pymedusa/Medusa/pull/10912))
+- Authenticate websocket connections. ([10914](https://github.com/pymedusa/Medusa/pull/10914))
+
+-----
+
+## 1.0.7 (25-08-2022)
+
+#### Improvements
+- Add ffmpeg to docker build for postprocessing
+
+#### Fixes
+- Add encoding when working with plexmatch file
+- Fix anidb cache key causing exceptions
+- Various smaller fixes
+
+-----
+
+## 1.0.6 (25-07-2022)
+
+#### Improvements
+- Remove the `Download` field from the display-show table. Isn't used anymore. ([10813](https://github.com/pymedusa/Medusa/pull/10813))
+
+#### Fixes
+- Fixed borders in tables where diplay: flex is used on a table cell. ([10813](https://github.com/pymedusa/Medusa/pull/10813))
+- Fix keys for caching recommended shows in recommended.dbm. ([10827](https://github.com/pymedusa/Medusa/pull/10827))
+- Fix using download handler with deluge / deluged. ([10828](https://github.com/pymedusa/Medusa/pull/10828))
+- History page: Fix filtering by multiple fields ([10832](https://github.com/pymedusa/Medusa/pull/10832))
+- Fix error when parsing files without subs ([10837](https://github.com/pymedusa/Medusa/pull/10837))
+
+-----
+
+## 1.0.5 (06-07-2022)
+
+#### Fixes
+- Only auto change the status of an episode, when directly triggered through the web ui. ([10806](https://github.com/pymedusa/Medusa/pull/10806))
+
+-----
+
+## 1.0.4 (05-07-2022)
+
+#### Improvements
+- Added connection (lost) indicator on the Medusa log ([10774](https://github.com/pymedusa/Medusa/pull/10774))
+- Extend subtitle file parsing to allow for titles with language name. ([10782](https://github.com/pymedusa/Medusa/pull/10782))
+- Auto change status episode to Wanted, when running a forced search for the episode. [10796](https://github.com/pymedusa/Medusa/pull/10796))
+
+#### Fixes
+- Homepage: Fix loading shows from localCache ([10779](https://github.com/pymedusa/Medusa/pull/10779))
+- Fix Erai-raws formatted anime release guessit parsing ([10791](https://github.com/pymedusa/Medusa/pull/10791))
+- Fix switching branch ([10798](https://github.com/pymedusa/Medusa/pull/10798))
+
+-----
+
+## 1.0.3 (10-06-2022)
+
+#### Improvements
+- Change log to debug when metadata image can't be retrieved
+- Update MediaInfo for Windows and MacOSX
+- Update Docker image to Python version 3.10
+
+#### Fixes
+- Fix NullReferenceError on testRename page when postprocessing method is symlink
+- Fix a specific guessit test
+
+-----
+
+## 1.0.2 (31-05-2022)
+
+#### Fixes
+- Downgrade Typing Extensions lib to support Python 3.6
+
+-----
+
+## 1.0.1 (31-05-2022)
+
+#### Fixes
+- Fix a bug that prevents Medusa to start on Python versions older than 3.8
+
+-----
+
+## 1.0.0 (31-05-2022)
+
+#### New Features
+- Add option to mass-update the info language ([10516](https://github.com/pymedusa/Medusa/pull/10516))
+
+#### Improvements
+- Multiple UI fixes / enhancements ([10566](https://github.com/pymedusa/Medusa/pull/10566))
+- Add config setting to allow overriding xem url ([10541](https://github.com/pymedusa/Medusa/pull/10541))
+- Increase addic7ed http request timeout ([10565](https://github.com/pymedusa/Medusa/pull/10565))
+- Improve anime title parsing for `Title Season 2 - 01` ([10534](https://github.com/pymedusa/Medusa/pull/10534))
+- Improve detection of commit / branch when run in docker ([10531](https://github.com/pymedusa/Medusa/pull/10531))
+- Improve guessit parsing for shows with numbers in them like `9-1-1` ([10493](https://github.com/pymedusa/Medusa/pull/10493))
+- Bump Knowit + pymediainfo to version 0.4.0 and 5.1.0 ([10564](https://github.com/pymedusa/Medusa/pull/10564))
+
+#### Fixes
+- Fix malformed imdb id's when imdb id not available ([10669](https://github.com/pymedusa/Medusa/pull/10669))
+- Fix shows being searched 2 days early for tvmaze shows ([10668](https://github.com/pymedusa/Medusa/pull/10668))
+- Disable guessit cache for postprocessing ([10532](https://github.com/pymedusa/Medusa/pull/10532))
+- Fix .plexmatch file misread as xml causing warnings ([10510](https://github.com/pymedusa/Medusa/pull/10510))
+
+-----
+
+## 0.5.29 (11-04-2022)
+
+#### New Features
+- Support for Plex metadata (.plexmatch) ([10466](https://github.com/pymedusa/Medusa/pull/10466))
+
+#### Improvements
+- Make the cache db and cache files optional for inclusion in the backup ([10475](https://github.com/pymedusa/Medusa/pull/10475))
+
+#### Fixes
+- Fix joining segments in log for failed episodes ([10472](https://github.com/pymedusa/Medusa/pull/10472))
+
+-----
+
+## 0.5.28 (01-04-2022)
+
+#### Improvements
+- Send discord notification as an embed ([10464](https://github.com/pymedusa/Medusa/pull/10464))
+
+#### Fixes
+- Fix Mass update page ([10447](https://github.com/pymedusa/Medusa/pull/10447))
+- Fix re-load episodes when navigatin from testRename to displayShow ([10465](https://github.com/pymedusa/Medusa/pull/10465))
+
+-----
+
+## 0.5.27 (29-03-2022)
+
+#### Fixes
+- Fix backup / restore page ([10447](https://github.com/pymedusa/Medusa/pull/10447))
+
+-----
+
+## 0.5.26 (28-03-2022)
+
+#### Improvements
+- UI now behaves as a single page app ([10408](https://github.com/pymedusa/Medusa/pull/10408))
+- Add ability to select Xem mapped seasons for season scene exceptions ([10438](https://github.com/pymedusa/Medusa/pull/10438))
+
+#### Fixes
+- Fix postprocessing loop when not using Failed Download Handling ([10435](https://github.com/pymedusa/Medusa/pull/10435))
+
+-----
+
+## 0.5.25 (08-03-2022)
+
+#### New Features
+- New indexer: Added support for adding shows from Imdb ([3603](https://github.com/pymedusa/Medusa/pull/3603))
+
+#### Improvements
+- Enhanced test guessit tool ([10357](https://github.com/pymedusa/Medusa/pull/10357))
+- Discord notifier: added ability to override avatar ([10351](https://github.com/pymedusa/Medusa/pull/10351))
+- Purge recommended shows cache after x days ([10352](https://github.com/pymedusa/Medusa/pull/10352))
+- Added a "load more" button to recommended shows ([10380](https://github.com/pymedusa/Medusa/pull/10380))
+- Improve menu layout on mobile ([10386](https://github.com/pymedusa/Medusa/pull/10386))
+
+#### Fixes
+- Fix saving specific post-processing method ([10350](https://github.com/pymedusa/Medusa/pull/10350))
+- Fix pasing torrent size when using torznab provider that have torrent_size available in the attrs. ([10365](https://github.com/pymedusa/Medusa/pull/10365))
+- Fix provider MoreThenTv ([10391](https://github.com/pymedusa/Medusa/pull/10391))
+- Fix Manage mass-update: Starting the refresh action ([10377](https://github.com/pymedusa/Medusa/pull/10377))
+
+-----
+
+## 0.5.24 (15-02-2022)
+
+#### Improvements
+- Improve show updates. Update the complete show when marked updated by indexer, without an indication to update a season. ([10330](https://github.com/pymedusa/Medusa/pull/10330))
+
+#### Fixes
+- Fix searching for season packs. ([10345](https://github.com/pymedusa/Medusa/pull/10345))
+
+-----
+
+## 0.5.23 (11-02-2022)
+
+#### New Features
+- Add support for banner and background images to indexer tvmaze ([10234](https://github.com/pymedusa/Medusa/pull/10234))
+- Add option for using ffprobe to validate postprocessed media ([10132](https://github.com/pymedusa/Medusa/pull/10132))
+- Add change indexer page to change the current indexer for shows in bulk ([9862](https://github.com/pymedusa/Medusa/pull/9862))
+- Add search templates feature. ([3732](https://github.com/pymedusa/Medusa/pull/3732))
+
+#### Improvements
+- Add column sorting for the add new show page search results ([10217](https://github.com/pymedusa/Medusa/pull/10217))
+- Add series start year as a renaming option ([10183](https://github.com/pymedusa/Medusa/pull/10183))
+- Remove git username/password authentication. No longer supported by github. ([10144](https://github.com/pymedusa/Medusa/pull/10144))
+- Add option to allow for overwriting nfo files. ([10237](https://github.com/pymedusa/Medusa/pull/10237))
+- Improve kodi nfo file creation. ([10237](https://github.com/pymedusa/Medusa/pull/10237))
+- Add filter options to the manual search results table. ([10252](https://github.com/pymedusa/Medusa/pull/10252))
+
+#### Fixes
+- Fix displayShow search subtitle button ([10214](https://github.com/pymedusa/Medusa/pull/10214))
+- Prevent failedDownloads from errorring, when a provider has been deleted ([10214](https://github.com/pymedusa/Medusa/pull/10214))
+- Fix mass update status page, start a new snatch when changing status to failed. ([10213](https://github.com/pymedusa/Medusa/pull/10213))
+- Fix changing process method in manual postprocessing. ([10220](https://github.com/pymedusa/Medusa/pull/10220))
+- Fix saving season posters / banners when using tvdb ([10251](https://github.com/pymedusa/Medusa/pull/10251))
+- Fix Addic7ed.com subtitle provider ([10312](https://github.com/pymedusa/Medusa/pull/10312))
+
+-----
+
+## 0.5.22 (23-12-2021)
+
+#### Fixes
+- Fix connecting to deluge version < 2.x ([10192](https://github.com/pymedusa/Medusa/pull/10192))
+
+-----
+
+## 0.5.21 (20-12-2021)
+
+#### New Features
+- Add official Python 3.10 support
+
+#### Improvements
+- Catch AttributeError for TVMaze API
+- Separate recommended lists calls
+- Add rule for parsing shows that begin with a number as title
+- Add anime category for TorrentDay
+
+#### Fixes
+- Fix Plex Server library update from /manage/plex
+- Fix TorrentDay generating a JSONDecodeError
+- Fix update Kodi library
+- Fix provider Morethantv
+- Prevent dropdowns from closing when using touch navigation
+
+-----
+
+## 0.5.20 (02-11-2021)
+
+#### Fixes
+- Restore original behavior when processing files and folders ([10020](https://github.com/pymedusa/Medusa/pull/10020))
+
+-----
+
+## 0.5.19 (31-10-2021)
+
+#### New Features
+- Added separate configs for the process methods (copy, move, etc) for torrent and nzb. (only usuable with the download handler) ([9932](https://github.com/pymedusa/Medusa/pull/9932))
+- Added setting for the default client path that will be protected (can't be deleted) during post-processing ([9954](https://github.com/pymedusa/Medusa/pull/9954))
+
+#### Fixes
+- Correctly delete folders with files for move method or if explicitly wanted ([9950](https://github.com/pymedusa/Medusa/pull/9950))
+- Fixed link to the overview of snatched episodes at the bottom of the pages ([9954](https://github.com/pymedusa/Medusa/pull/9954))
+- Prevent duplicate searches for Torznab
+- Catch exceptions during shutdown and always delete PID file
+- Fix scene season searches
+
+-----
+
+## 0.5.18 (14-09-2021)
+
+#### Improvements
+- Add the options to manage/searches page to clean automatic added scene exceptions from cache. ([9859](https://github.com/pymedusa/Medusa/pull/9859))
+- Add custom newznab/torznab category id's through UI. ([9857](https://github.com/pymedusa/Medusa/pull/9857))
+
+#### Fixes
+- Fix prowlarr provider id's being obfuscated in logs because of a bad log level. ([9857](https://github.com/pymedusa/Medusa/pull/9857))
+- Fix postprocessing specials. ([9812](https://github.com/pymedusa/Medusa/pull/9812))
+- Fix storing a negative value in the UI as a search delay value ([9822](https://github.com/pymedusa/Medusa/pull/9822))
+
+-----
+
+## 0.5.17 (16-08-2021)
+
+#### Fixes
+- Fix history page (compact layout) fails to load. ([9794](https://github.com/pymedusa/Medusa/pull/9794))
+- Prevent recommended shows (imdb) to cache empty responses to the api. ([9797](https://github.com/pymedusa/Medusa/pull/9797))
+- Fix download handler throwing errors connecting to NZBget. ([9801](https://github.com/pymedusa/Medusa/pull/9801))
+
+-----
+
+## 0.5.16 (13-08-2021)
+
+#### New Features
+- Implemented recommended shows v2. ([5782](https://github.com/pymedusa/Medusa/pull/5782))
+  - Added recommended list from anilist.co
+  - Recommended lists are cached nightly
+  - Configure which lists to cache
+  - Improvements to the recommended list UI
+  - Added plot and genre information when available from the recommended list
+  - Add shows from recommended lists through one click to the show search, or by id (if a tvdbid, tmdbid or tvmazeid is available)
+
+#### Improvements
+- adba lib: Reduced startup time for libraries with many anime shows. ([5782](https://github.com/pymedusa/Medusa/pull/5782))
+  - anime-list.xml was read for each anime show on startup
+
+#### Fixes
+- Fixed postprocessing of archives with multiple video files caused a pp of the complete download dir. ([9775](https://github.com/pymedusa/Medusa/pull/9775))
+- Fixed download handler wrongly untrack downloads when connection errors occurred. ([9774](https://github.com/pymedusa/Medusa/pull/9774))
+- Removed anonomized redirect service (derefer.org is down) in favor of "noreferrer noopener" headers ([5782](https://github.com/pymedusa/Medusa/pull/5782))
+- Fixed schedule page not showing day of week for shows airing on sunday (banner/poster layouts) ([9791](https://github.com/pymedusa/Medusa/pull/9791))
+- Group history compact layout results by quality ([9788](https://github.com/pymedusa/Medusa/pull/9788))
+
+----
+
+## 0.5.15 (23-07-2021)
+
+#### Improvements
+- Improved Kodi12+ metadata creation. Use 'uniqueid' tag to specify indexer. ([9745](https://github.com/pymedusa/Medusa/pull/9745))
+
+#### Fixes
+- Fix prowl notifications ([9720](https://github.com/pymedusa/Medusa/pull/9720))
+- Fix provider ABNormal ([9721](https://github.com/pymedusa/Medusa/pull/9721))
+- Fix saving provider password ([9721](https://github.com/pymedusa/Medusa/pull/9721))
+
+-----
+
+## 0.5.14 (06-07-2021)
+
+#### New Features
+- Added support for Prowlarr ([9653](https://github.com/pymedusa/Medusa/pull/9653))
+
+#### Improvements
+- Vueified config/providers ([9653](https://github.com/pymedusa/Medusa/pull/9653))
+- Added support for Prowlarr (an alternative to Jackett) ([9653](https://github.com/pymedusa/Medusa/pull/9653))
+- Added feature to test provider results ([9698](https://github.com/pymedusa/Medusa/pull/9698))
+
+#### Fixes
+- Fix email notifications for per show notifications with special chars ([9652](https://github.com/pymedusa/Medusa/pull/9652))
+- Fix adding an existing show did not run refresh from disk after ([9694](https://github.com/pymedusa/Medusa/pull/9694))
+- Fix filter displayShow episodes by overview status ([9691](https://github.com/pymedusa/Medusa/pull/9691))
+- Fix main page not reflecting correct 'next episode date' ([9689](https://github.com/pymedusa/Medusa/pull/9689))
+
+-----
+
+## 0.5.13 (16-06-2021)
+
+#### Fixes
+- Add support for new synology download station api. Credits to Benjv. ([9555](https://github.com/pymedusa/Medusa/pull/9555))
+- Fix shows not being removed from UI. ([9563](https://github.com/pymedusa/Medusa/pull/9563))
+- Fix provider torrentday. Needs additional cookie cf_clearance. ([9628](https://github.com/pymedusa/Medusa/pull/9628))
+- Fix provider animebytes. Fixed issue with parsing releases with absolute episode numbering. ([9620](https://github.com/pymedusa/Medusa/pull/9620))
+- Fix transmission authentication. ([9598](https://github.com/pymedusa/Medusa/pull/9598))
+
+-----
+
+## 0.5.12 (07-05-2021)
+
+#### New Features
+- Remove experimental feature flag for Download handler / advanced failed download handling
+- Remove experimental feature flag for Append (year) to each show title
+
+#### Improvements
+- Vueify schedule page. ([9403](https://github.com/pymedusa/Medusa/pull/9403))
+
+#### Fixes
+- Fix download hander failed ([9476](https://github.com/pymedusa/Medusa/pull/9476))
+
+-----
+
+## 0.5.11 (17-04-2021)
+
+#### New Features
+- Added new provicer TvRoad. (credits to IamMika23) ([9424](https://github.com/pymedusa/Medusa/pull/9424))
+
+#### Improvements
+- Vueify history page. ([9201](https://github.com/pymedusa/Medusa/pull/9201))
+- Nebulance: Prevent duplicate results for provider. ([9333](https://github.com/pymedusa/Medusa/pull/9333))
+- Add Cloudflare BFM detection. ([9407](https://github.com/pymedusa/Medusa/pull/9407))
+
+#### Fixes
+- AnimeBytes: Fix exception when processing multi-ep BD specials. ([9396](https://github.com/pymedusa/Medusa/pull/9396))
+- Fix issue with sending torrents to Synology downloadstation. ([9401](https://github.com/pymedusa/Medusa/pull/9401))
+- Fix a number of issues with trakt sync. ([9319](https://github.com/pymedusa/Medusa/pull/9319))
+- Fix shows enriched with wrong IMDB show data. ([9435](https://github.com/pymedusa/Medusa/pull/9435))
+- Fix configured provider ratio getting lost after restart. ([9413](https://github.com/pymedusa/Medusa/pull/9413))
+- Fix sending torrents to Synology Download Station from version 3.8.16.-3566. (credits to BenjV). ([9401](https://github.com/pymedusa/Medusa/pull/9401))
+
+-----
+
+## 0.5.10 (01-03-2021)
+
+#### Fixes
+- Don't save removed episode location as dot ([9284](https://github.com/pymedusa/Medusa/pull/9284))
+
+-----
+
+## 0.5.9 (28-02-2021)
+
+#### New Features
+- Added new postprocessing method download handler. Check ([wiki](https://github.com/pymedusa/Medusa/wiki/Post-Processing#download-handler)) for more info. ([8485](https://github.com/pymedusa/Medusa/pull/8485))
+- Add async postprocessing to manual postprocessing ([8485](https://github.com/pymedusa/Medusa/pull/8485))
+- Add postprocessing to apiv2. sabToNzb uses apiv2 when fork=medusa-apiv2. ([9212](https://github.com/pymedusa/Medusa/pull/9212))
+
+#### Fixes
+- Fix setStatus in manage/episodeStatuses page. ([9228](https://github.com/pymedusa/Medusa/pull/9228))
+- Fix error when using manage/backlogOverview page. ([9208](https://github.com/pymedusa/Medusa/pull/9208))
 
 -----
 

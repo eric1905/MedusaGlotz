@@ -23,12 +23,12 @@ from medusa import (
     notifiers,
     post_processor,
     subtitles,
+    ws
 )
 from medusa.common import (
     ARCHIVED,
     DOWNLOADED,
     FAILED,
-    IGNORED,
     NAMING_DUPLICATE,
     NAMING_EXTEND,
     NAMING_LIMITED_EXTEND,
@@ -79,6 +79,7 @@ from medusa.scene_numbering import (
     get_scene_absolute_numbering,
     get_scene_numbering,
 )
+from medusa.search.queue import FailedQueueItem
 from medusa.tv.base import Identifier, TV
 
 from six import itervalues, viewitems
@@ -381,7 +382,9 @@ class Episode(TV):
         if value and self.is_location_valid(new_location):
             self.file_size = os.path.getsize(new_location)
         else:
+            self._location = ''
             self.file_size = 0
+            return
 
         if new_location == old_location:
             return
@@ -419,33 +422,6 @@ class Episode(TV):
     @status.setter
     def status(self, value):
         self._status = value
-
-    def _sync_trakt(self, status):
-        """
-        If Trakt enabled and trakt sync watchlist enabled, add/remove the episode from the watchlist.
-
-        @TODO: Move this out of episode.py. As this is not something we'd want to do on every episode.
-            We should use trakt's /sync route instead.
-        """
-        if app.USE_TRAKT and app.TRAKT_SYNC_WATCHLIST:
-
-            upd = None
-            if status in [WANTED, FAILED]:
-                upd = 'Add'
-
-            elif status in [IGNORED, SKIPPED, DOWNLOADED, ARCHIVED]:
-                upd = 'Remove'
-
-            if not upd:
-                return
-
-            log.debug('{action} episode {episode}, showid: indexerid {show_id},'
-                      'Title {show_name} to Watchlist', {
-                          'action': upd, 'episode': self.episode,
-                          'show_id': self.series.series_id, 'show_name': self.series.name
-                      })
-
-            notifiers.trakt_notifier.update_watchlist_episode(self.series, self)
 
     @property
     def status_name(self):
@@ -750,13 +726,19 @@ class Episode(TV):
                     self.absolute_number
                 )
 
-            if self.scene_season is None or self.scene_episode == 0:
-                self.scene_season, self.scene_episode = get_scene_numbering(
-                    self.series, self.episode, self.season
-                )
+            if self.series.is_scene:
+                self._load_scene_numbering()
 
             self.reset_dirty()
             return True
+
+    def _load_scene_numbering(self):
+        scene_mapping = get_scene_numbering(
+            self.series, self.season, self.episode
+        )
+        if all([scene_mapping[0] is not None, scene_mapping[1]]):
+            self.scene_season = scene_mapping[0]
+            self.scene_episode = scene_mapping[1]
 
     def set_indexer_data(self, season=None, indexer_api=None):
         """Set episode information from indexer.
@@ -891,9 +873,7 @@ class Episode(TV):
 
         # TODO: Just me not understanding. If we're getting the show info from the indexer.
         # Why are we trying to get the scene_season and scene_episode from the db?
-        self.scene_season, self.scene_episode = get_scene_numbering(
-            self.series, self.episode, self.season
-        )
+        self._load_scene_numbering()
 
         self.description = getattr(my_ep, 'overview', '')
 
@@ -1071,9 +1051,7 @@ class Episode(TV):
                         self.absolute_number
                     )
 
-                    self.scene_season, self.scene_episode = get_scene_numbering(
-                        self.series, self.episode, self.season
-                    )
+                    self._load_scene_numbering()
 
                     self.description = ep_details.findtext('plot')
                     if self.description is None:
@@ -1119,6 +1097,7 @@ class Episode(TV):
         data['identifier'] = self.identifier
         data['id'] = {self.indexer_name: self.indexerid}
         data['slug'] = self.slug
+        data['showSlug'] = self.series.slug
         data['season'] = self.season
         data['episode'] = self.episode
 
@@ -1161,15 +1140,19 @@ class Episode(TV):
             data['statistics']['subtitleSearch']['last'] = self.subtitles_lastsearch
             data['statistics']['subtitleSearch']['count'] = self.subtitles_searchcount
             data['wantedQualities'] = self.wanted_quality
-            data['wantedQualities'] = [ep.identifier for ep in self.related_episodes]
+            data['related'] = self.related_episodes
+
+            if self.file_size:
+                # Used by the test-rename vue component.
+                data['file']['properPath'] = self.proper_path()
 
         return data
 
     def create_meta_files(self):
         """Create episode metadata files."""
         if not self.series.is_location_valid():
-            log.warning('{id}: The series directory is missing, unable to create metadata',
-                        {'id': self.series.series_id})
+            log.debug('{id}: The series directory is missing, unable to create metadata',
+                      {'id': self.series.series_id})
             return
 
         for metadata_provider in itervalues(app.metadata_provider_dict):
@@ -1422,6 +1405,9 @@ class Episode(TV):
         main_db_con = db.DBConnection()
         main_db_con.upsert('tv_episodes', new_value_dict, control_value_dict)
 
+        # Push an update with the updated episode to any open Web UIs through the WebSocket
+        ws.Message('episodeUpdated', self.to_json()).push()
+
         self.reset_dirty()
 
     def full_path(self):
@@ -1505,7 +1491,7 @@ class Episode(TV):
 
         return good_name
 
-    def __replace_map(self):
+    def __replace_map(self, show_name=None):
         """Generate a replacement map for this episode.
 
         Maps all possible custom naming patterns to the correct value for this episode.
@@ -1543,10 +1529,12 @@ class Episode(TV):
                 return ''
             return parse_result.release_group.strip('.- []{}')
 
+        series_name = self.series.name
+        if show_name:
+            series_name = show_name
+
         if app.NAMING_STRIP_YEAR:
-            series_name = re.sub(r'\(\d+\)$', '', self.series.name).rstrip()
-        else:
-            series_name = self.series.name
+            series_name = re.sub(r'\(\d+\)$', '', series_name).rstrip()
 
         # try to get the release group
         rel_grp = {
@@ -1605,6 +1593,7 @@ class Episode(TV):
             '%0XE': '%02d' % self.scene_episode,
             '%AB': '%(#)03d' % {'#': self.absolute_number},
             '%XAB': '%(#)03d' % {'#': self.scene_absolute_number},
+            '%ABb': str(self.airdate.strftime('%b')),
             '%RN': release_name(self.release_name),
             '%RG': rel_grp[relgrp],
             '%CRG': rel_grp[relgrp].upper(),
@@ -1615,9 +1604,12 @@ class Episode(TV):
             '%Y': str(self.airdate.year),
             '%M': str(self.airdate.month),
             '%D': str(self.airdate.day),
+            '%Mm': str(self.airdate.strftime('%b')),
+            '%MM': str(self.airdate.strftime('%B')),
             '%CY': str(date.today().year),
             '%CM': str(date.today().month),
             '%CD': str(date.today().day),
+            '%SY': str(self.series.start_year),
             '%0M': '%02d' % self.airdate.month,
             '%0D': '%02d' % self.airdate.day,
             '%RT': 'PROPER' if self.is_proper else '',
@@ -1644,7 +1636,7 @@ class Episode(TV):
 
         return result_name
 
-    def _format_pattern(self, pattern=None, multi=None, anime_type=None):
+    def _format_pattern(self, pattern=None, multi=None, anime_type=None, show_name=None):
         """Manipulate an episode naming pattern and then fills the template in.
 
         :param pattern:
@@ -1668,7 +1660,7 @@ class Episode(TV):
         else:
             anime_type = 3
 
-        replace_map = self.__replace_map()
+        replace_map = self.__replace_map(show_name=show_name)
 
         result_name = pattern
 
@@ -1907,6 +1899,23 @@ class Episode(TV):
 
         return sanitize_filename(self._format_pattern(name_groups[-1], multi, anime_type))
 
+    def formatted_search_string(self, pattern=None, multi=None, anime_type=None, title=None):
+        """The search template, formatted based on the tv_show's episode_search_template setting.
+
+        :param pattern:
+        :type pattern: str
+        :param multi:
+        :type multi: bool
+        :param anime_type:
+        :type anime_type: int
+        :return:
+        :rtype: str
+        """
+        # split off the dirs only, if they exist
+        name_groups = re.split(r'[\\/]', pattern)
+
+        return sanitize_filename(self._format_pattern(name_groups[-1], multi, anime_type, show_name=title))
+
     def rename(self):
         """Rename an episode file and all related files to the location and filename as specified in naming settings."""
         if not self.is_location_valid():
@@ -1951,7 +1960,8 @@ class Episode(TV):
         # This is wrong. Cause of pp not moving subs.
         if self.series.subtitles and app.SUBTITLES_DIR != '':
             related_subs = post_processor.PostProcessor(
-                self.location).list_associated_files(app.SUBTITLES_DIR, subfolders=True, subtitles_only=True)
+                self.location
+            ).list_associated_files(app.SUBTITLES_DIR, subfolders=True, subtitles_only=True)
 
         log.debug(
             '{id} Files associated to {location}: {related_files}', {
@@ -2104,8 +2114,14 @@ class Episode(TV):
             new_quality = Quality.name_quality(filepath, self.series.is_anime)
 
             if old_status in (SNATCHED, SNATCHED_PROPER, SNATCHED_BEST) or (
-                    old_status == DOWNLOADED and old_location) or (
-                    old_status == WANTED and not old_location):
+                    old_status == DOWNLOADED and old_location
+            ) or (
+                old_status == WANTED and not old_location
+            ) or (
+                # For example when removing an existing show (keep files)
+                # and re-adding it. The status is SKIPPED just after adding it.
+                old_status == SKIPPED and not old_location
+            ):
                 new_status = DOWNLOADED
             else:
                 new_status = ARCHIVED
@@ -2139,3 +2155,57 @@ class Episode(TV):
                     'filepath': filepath,
                 }
             )
+
+    def mass_update_episode_status(self, new_status):
+        """
+        Change the status of an episode, with a number of additional actions depending old -> new status.
+
+        :param new_status: New status value.
+        :type new_status: int
+
+        :returns: The episodes update sql to be used in a mass action.
+        """
+        with self.lock:
+            if self.status == UNAIRED:
+                log.warning('Refusing to change status of {series} {episode} because it is UNAIRED',
+                            {'series': self.series.name, 'episode': self.slug})
+                return
+
+            snatched_qualities = [SNATCHED, SNATCHED_PROPER, SNATCHED_BEST]
+
+            if new_status == DOWNLOADED and not (
+                    self.status in snatched_qualities + [DOWNLOADED]
+                    or os.path.isfile(self.location)):
+                log.warning('Refusing to change status of {series} {episode} to DOWNLOADED'
+                            " because it's not SNATCHED/DOWNLOADED or the file is missing",
+                            {'series': self.series.name, 'episode': self.slug})
+                return
+
+            if new_status == FAILED:
+                if self.status not in snatched_qualities + [DOWNLOADED, ARCHIVED]:
+                    log.warning('Refusing to change status of {series} {episode} to FAILED'
+                                " because it's not SNATCHED/DOWNLOADED/ARCHIVED",
+                                {'series': self.series.name, 'episode': self.slug})
+                    return
+                else:
+                    cur_failed_queue_item = FailedQueueItem(self.series, [self])
+                    app.forced_search_queue_scheduler.action.add_item(cur_failed_queue_item)
+
+            if new_status == WANTED:
+                if self.status in [DOWNLOADED, ARCHIVED]:
+                    log.debug('Removing release_name of {series} {episode} as episode was changed to WANTED',
+                              {'series': self.series.name, 'episode': self.slug})
+                    self.release_name = ''
+
+                if self.manually_searched:
+                    log.debug("Resetting 'manually searched' flag of {series} {episode}"
+                              ' as episode was changed to WANTED',
+                              {'series': self.series.name, 'episode': self.slug})
+                    self.manually_searched = False
+
+            self.status = new_status
+            # Push an update with the updated episode to any open Web UIs through the WebSocket
+            ws.Message('episodeUpdated', self.to_json()).push()
+
+            # Make sure to run the collected sql through a mass action.
+            return self.get_sql()

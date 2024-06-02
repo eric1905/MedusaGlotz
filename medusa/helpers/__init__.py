@@ -353,26 +353,14 @@ def hardlink_file(src_file, dest_file):
         link(src_file, dest_file)
         fix_set_group_id(dest_file)
     except OSError as msg:
-        if msg.errno == errno.EEXIST:
-            # File exists. Don't fallback to copy
-            log.warning(
-                u'Failed to create hardlink of {source} at {destination}.'
-                u' Error: {error!r}', {
-                    'source': src_file,
-                    'destination': dest_file,
-                    'error': msg
-                }
-            )
-        else:
-            log.warning(
-                u'Failed to create hardlink of {source} at {destination}.'
-                u' Error: {error!r}. Copying instead', {
-                    'source': src_file,
-                    'destination': dest_file,
-                    'error': msg,
-                }
-            )
-            copy_file(src_file, dest_file)
+        log.warning(
+            u'Failed to create hardlink of {source} at {destination}.'
+            u' Error: {error!r}.', {
+                'source': src_file,
+                'destination': dest_file,
+                'error': msg,
+            }
+        )
 
 
 def symlink(src, dst):
@@ -1000,7 +988,10 @@ def real_path(path):
 
     The resulting path will have no symbolic link, '/./' or '/../' components.
     """
-    return os.path.normpath(os.path.normpath(os.path.realpath(path)))
+    if path is None:
+        return ''
+
+    return os.path.normpath(os.path.normcase(os.path.realpath(path)))
 
 
 def validate_show(show, season=None, episode=None):
@@ -1711,24 +1702,15 @@ def title_to_imdb(title, start_year, imdb_api=None):
         imdb_api = Imdb()
 
     titles = imdb_api.search_for_title(title)
-    if len(titles) == 1:
-        return titles[0]['imdb_id']
 
     # ImdbPie returns the year as string
     start_year = str(start_year)
     title = title.lower()
 
-    title_matches = []
     for candidate in titles:
-        # This check should be made more reliable
-        if candidate['title'].lower() == title:
-            if candidate['year'] == start_year:
-                return candidate['imdb_id']
-            title_matches.append(candidate['imdb_id'])
-
-    # Return the most relevant result (can be erroneous)
-    if title_matches:
-        return title_matches[0]
+        # Only return matches by year
+        if candidate['title'].lower() == title and candidate['year'] == start_year:
+            return candidate['imdb_id']
 
 
 def get_title_without_year(title, title_year):

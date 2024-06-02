@@ -67,11 +67,11 @@ class CheckVersion(object):
         log.info(u'Config backup in progress...')
         ui.notifications.message('Backup', 'Config backup in progress...')
         try:
-            backupDir = os.path.join(app.DATA_DIR, app.BACKUP_DIR)
-            if not os.path.isdir(backupDir):
-                os.mkdir(backupDir)
+            backup_dir = os.path.join(app.DATA_DIR, app.BACKUP_DIR)
+            if not os.path.isdir(backup_dir):
+                os.mkdir(backup_dir)
 
-            if self._keeplatestbackup(backupDir) and self._backup(backupDir):
+            if self._keeplatestbackup(backup_dir) and self._backup(backup_dir):
                 log.info(u'Config backup successful')
                 ui.notifications.message('Backup', 'Config backup successful')
                 return True
@@ -85,12 +85,12 @@ class CheckVersion(object):
             return False
 
     @staticmethod
-    def _keeplatestbackup(backupDir=None):
-        if not backupDir:
+    def _keeplatestbackup(backup_dir=None):
+        if not backup_dir:
             return False
 
         import glob
-        files = glob.glob(os.path.join(backupDir, '*.zip'))
+        files = glob.glob(os.path.join(backup_dir, '*.zip'))
         if not files:
             return True
 
@@ -109,28 +109,36 @@ class CheckVersion(object):
 
     # TODO: Merge with backup in helpers
     @staticmethod
-    def _backup(backupDir=None):
-        if not backupDir:
+    def _backup(backup_dir=None):
+        if not backup_dir:
             return False
+
         source = [
             os.path.join(app.DATA_DIR, app.APPLICATION_DB),
-            app.CONFIG_FILE,
-            os.path.join(app.DATA_DIR, app.FAILED_DB),
-            os.path.join(app.DATA_DIR, app.CACHE_DB)
+            app.CONFIG_FILE
         ]
-        target = os.path.join(backupDir, app.BACKUP_FILENAME.format(timestamp=time.strftime('%Y%m%d%H%M%S')))
 
-        for (path, dirs, files) in os.walk(app.CACHE_DIR, topdown=True):
-            for dirname in dirs:
-                if path == app.CACHE_DIR and dirname not in ['images']:
-                    dirs.remove(dirname)
-            for filename in files:
-                source.append(os.path.join(path, filename))
+        if app.BACKUP_CACHE_DB:
+            source += [
+                os.path.join(app.DATA_DIR, app.FAILED_DB),
+                os.path.join(app.DATA_DIR, app.CACHE_DB),
+                os.path.join(app.DATA_DIR, app.RECOMMENDED_DB)
+            ]
+
+        target = os.path.join(backup_dir, app.BACKUP_FILENAME.format(timestamp=time.strftime('%Y%m%d%H%M%S')))
+
+        if app.BACKUP_CACHE_FILES:
+            for (path, dirs, files) in os.walk(app.CACHE_DIR, topdown=True):
+                for dirname in dirs:
+                    if path == app.CACHE_DIR and dirname not in ['images']:
+                        dirs.remove(dirname)
+                for filename in files:
+                    source.append(os.path.join(path, filename))
 
         return helpers.backup_config_zip(source, target, app.DATA_DIR)
 
     def safe_to_update(self):
-
+        """Verify if it's safe to update."""
         def db_safe(self):
             message = {
                 'equal': {
@@ -339,19 +347,17 @@ class CheckVersion(object):
         if app.RUNS_IN_DOCKER is not None:
             return app.RUNS_IN_DOCKER
 
-        path = '/proc/{pid}/cgroup'.format(pid=os.getpid())
         try:
-            if not os.path.isfile(path):
-                return False
-
-            with open(path) as f:
-                for line in f:
-                    if re.match(r'\d+:[\w=]+:/docker(-[ce]e)?/\w+', line):
-                        log.debug(u'Running in a docker container')
-                        app.RUNS_IN_DOCKER = True
-                        return True
-                return False
+            path = '/.dockerenv'
+            if os.path.isfile(path):
+                app.RUNS_IN_DOCKER = True
+                return True
         except (EnvironmentError, OSError) as error:
             log.info(u'Tried to check the path {path} if we are running in a docker container, '
                      u'but an error occurred: {error}', {'path': path, 'error': error})
-            return False
+
+        if os.environ.get('MEDUSA_COMMIT_HASH') and os.environ.get('MEDUSA_COMMIT_BRANCH'):
+            app.RUNS_IN_DOCKER = True
+            return True
+
+        return False

@@ -14,7 +14,7 @@
 <script>
 import { mapGetters, mapState } from 'vuex';
 
-import router, { base as routerBase } from '../../router';
+import router from '../../router';
 
 export default {
     name: 'app-link',
@@ -76,6 +76,10 @@ export default {
             }
             return this.computedHref.startsWith('#');
         },
+        /**
+         * Not used for now as derefer.org is down and there are no suitable replacements.
+         * @returns {string} - de-refer service'd url.
+         */
         anonymisedHref() {
             const { anonRedirect } = this.general;
             const href = this.computedHref;
@@ -90,7 +94,7 @@ export default {
                 return;
             }
 
-            const { route } = router.resolve(routerBase + computedHref);
+            const { route } = router.resolve('/' + computedHref);
             if (!route.name) {
                 return;
             }
@@ -98,7 +102,7 @@ export default {
             return route;
         },
         linkProperties() {
-            const { to, isIRC, isAbsolute, isExternal, isHashPath, anonymisedHref, matchingVueRoute } = this;
+            const { to, isIRC, isAbsolute, isExternal, isHashPath, matchingVueRoute } = this;
             const base = this.computedBase;
             const href = this.computedHref;
 
@@ -123,14 +127,14 @@ export default {
             // If current page and next page are both vue routes return router-link
             if (matchingVueRoute && this.$route && matchingVueRoute.meta.converted && this.$route.meta.converted) {
                 // Allows us to skip when we're in a test
-                if (window.loadMainApp) {
-                    return {
-                        is: 'router-link',
-                        to: matchingVueRoute.fullPath,
-                        // Add a `href` attribute to enable native mouse navigation (middle click, ctrl+click, etc.)
-                        href: new URL(matchingVueRoute.fullPath, base).href
-                    };
-                }
+                // if (window.loadMainApp) {
+                return {
+                    is: 'router-link',
+                    to: matchingVueRoute.fullPath,
+                    // Add a `href` attribute to enable native mouse navigation (middle click, ctrl+click, etc.)
+                    href: new URL(matchingVueRoute.fullPath.replace(/^(\/)/, ''), base).href
+                };
+                // }
             }
 
             return {
@@ -146,18 +150,12 @@ export default {
                         }
                         return location.href.replace(location.hash, '') + href;
                     }
-                    if (isIRC) {
-                        return href;
-                    }
-                    if (isAbsolute) {
-                        if (isExternal) {
-                            return anonymisedHref;
-                        }
+                    if (isIRC || isAbsolute) {
                         return href;
                     }
                     return new URL(href, base).href;
                 })(),
-                rel: isAbsolute && isExternal ? 'noreferrer' : undefined
+                rel: isAbsolute && isExternal ? 'noreferrer noopener' : undefined
             };
         }
     }

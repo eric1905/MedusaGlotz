@@ -77,7 +77,6 @@
 
 import { mapActions, mapGetters, mapState } from 'vuex';
 import { VueGoodTable } from 'vue-good-table';
-import { apiRoute } from '../api';
 import { StateSwitch } from './helpers';
 
 export default {
@@ -141,7 +140,8 @@ export default {
     },
     computed: {
         ...mapState({
-            general: state => state.config.general
+            general: state => state.config.general,
+            client: state => state.auth.client
         }),
         ...mapGetters({
             getLastReleaseName: 'getLastReleaseName'
@@ -184,7 +184,7 @@ export default {
             this.displayQuestion = false;
             this.loadingMessage = 'Searching for subtitles and downloading if available... ';
             this.loading = true;
-            apiRoute('home/searchEpisodeSubtitles', { params })
+            this.client.apiRoute('home/searchEpisodeSubtitles', { params })
                 .then(response => {
                     if (response.data.result !== 'failure') {
                         // Update the show, as we have new information (subtitles)
@@ -213,7 +213,7 @@ export default {
             this.displayQuestion = false;
             this.loading = true;
             this.loadingMessage = 'Searching for subtitles... ';
-            apiRoute('home/manualSearchSubtitles', { params: subtitleParams })
+            this.client.apiRoute('home/manualSearchSubtitles', { params: subtitleParams, timeout: 120000 })
                 .then(response => {
                     if (response.data.result === 'success') {
                         this.subtitles.push(...response.data.subtitles);
@@ -229,7 +229,7 @@ export default {
         redownloadLang() {
             const { subtitleParams } = this;
 
-            apiRoute('home/searchEpisodeSubtitles', { params: subtitleParams })
+            this.client.apiRoute('home/searchEpisodeSubtitles', { params: subtitleParams })
                 .then(response => {
                     if (response.data.result !== 'failure') {
                         // Update the show, as we have new information (subtitles)
@@ -263,7 +263,7 @@ export default {
             this.loadingMessage = 'downloading subtitle... ';
             this.loading = true;
 
-            apiRoute('home/manualSearchSubtitles', { params })
+            this.client.apiRoute('home/manualSearchSubtitles', { params, timeout: 120000 })
                 .then(response => {
                     if (response.data.result === 'success') {
                         // Update the show, as we have new information (subtitles)

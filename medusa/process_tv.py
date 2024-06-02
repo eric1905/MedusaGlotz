@@ -16,7 +16,13 @@ from medusa import app, db, failed_processor, helpers, notifiers, post_processor
 from medusa.clients import torrent
 from medusa.common import DOWNLOADED, SNATCHED, SNATCHED_BEST, SNATCHED_PROPER
 from medusa.helper.common import is_sync_file
-from medusa.helper.exceptions import EpisodePostProcessingFailedException, FailedPostProcessingFailedException, ex
+from medusa.helper.exceptions import (
+    EpisodePostProcessingAbortException,
+    EpisodePostProcessingFailedException,
+    EpisodePostProcessingPostponedException,
+    FailedPostProcessingFailedException,
+    ex
+)
 from medusa.logger.adapters.style import CustomBraceAdapter
 from medusa.name_parser.parser import InvalidNameException, InvalidShowException, NameParser
 from medusa.queues import generic_queue
@@ -36,7 +42,7 @@ class PostProcessQueueItem(generic_queue.QueueItem):
 
     def __init__(self, path=None, info_hash=None, resource_name=None, force=False,
                  is_priority=False, process_method=None, delete_on=False, failed=False,
-                 proc_type='auto', ignore_subs=False):
+                 proc_type='auto', ignore_subs=False, episodes=[], client_type=None, process_single_resource=False):
         """Initialize the class."""
         generic_queue.QueueItem.__init__(self, u'Post Process')
 
@@ -47,11 +53,17 @@ class PostProcessQueueItem(generic_queue.QueueItem):
         self.resource_name = resource_name
         self.force = force
         self.is_priority = is_priority
-        self.process_method = process_method
         self.delete_on = delete_on
         self.failed = failed
         self.proc_type = proc_type
         self.ignore_subs = ignore_subs
+        self.episodes = episodes
+        self.process_single_resource = process_single_resource
+
+        # torrent or nzb. Pass info on what sort of download we're processing.
+        # We might need this when determining the PROCESS_METHOD.
+        self.client_type = client_type
+        self.process_method = self.get_process_method(process_method, client_type)
 
         self.to_json.update({
             'success': self.success,
@@ -69,6 +81,20 @@ class PostProcessQueueItem(generic_queue.QueueItem):
             }
         })
 
+    def get_process_method(self, process_method, client_type):
+        """Determine the correct process method.
+
+        If client_type is provided (torrent/nzb) use that to get a
+            client specific process method.
+        """
+        if process_method:
+            return process_method
+
+        if self.client_type and app.USE_SPECIFIC_PROCESS_METHOD:
+            return app.PROCESS_METHOD_NZB if client_type == 'nzb' else app.PROCESS_METHOD_TORRENT
+
+        return app.PROCESS_METHOD
+
     def update_resource(self, status):
         """
         Update the resource in db, depending on the postprocess result.
@@ -77,8 +103,7 @@ class PostProcessQueueItem(generic_queue.QueueItem):
         """
         main_db_con = db.DBConnection()
         main_db_con.action(
-            'UPDATE history set client_status = ? '
-            'WHERE date = (select max(date) from history where info_hash = ?)',
+            'UPDATE history set client_status = ? WHERE info_hash = ?',
             [status.status, self.info_hash]
         )
         log.info('Updated history with resource path: {path} and resource: {resource} with new status {status}', {
@@ -87,8 +112,8 @@ class PostProcessQueueItem(generic_queue.QueueItem):
             'status': status
         })
 
-    def update_history(self, process_results):
-        """Update main.history table with process results."""
+    def update_history_processed(self, process_results):
+        """Update the history table when we have a processed path + resource."""
         from medusa.schedulers.download_handler import ClientStatus
         status = ClientStatus()
 
@@ -99,7 +124,7 @@ class PostProcessQueueItem(generic_queue.QueueItem):
 
             # If succeeded store Postprocessed + Completed. (384)
             # If failed store Postprocessed + Failed. (272)
-            if process_results.result:
+            if process_results.result and not process_results.failed:
                 status.add_status_string('Completed')
                 self.success = True
             else:
@@ -112,42 +137,61 @@ class PostProcessQueueItem(generic_queue.QueueItem):
                 'resource': self.resource_name
             })
 
+    def process_path(self):
+        """Process for when we have a valid path."""
+        process_results = ProcessResult(
+            self.path, self.process_method,
+            failed=self.failed, episodes=self.episodes,
+            process_single_resource=self.process_single_resource
+        )
+        process_results.process(
+            resource_name=self.resource_name,
+            force=self.force,
+            is_priority=self.is_priority,
+            delete_on=self.delete_on,
+            proc_type=self.proc_type,
+            ignore_subs=self.ignore_subs
+        )
+
+        # A user might want to use advanced post-processing, but opt-out of failed download handling.
+        if (
+            self.process_single_resource
+            and (process_results.failed or not process_results.succeeded)
+            and not process_results.postpone_processing
+        ):
+            process_results.process_failed(self.path)
+
+        # In case we have an info_hash or (nzbid), update the history table with the pp results.
+        # Skip the history update when the postponed (because of missing subs) flag was enabled.
+        if self.info_hash and not process_results.postpone_processing:
+            self.update_history_processed(process_results)
+
+        return process_results
+
     def run(self):
         """Run postprocess queueitem thread."""
         generic_queue.QueueItem.run(self)
         self.started = True
 
         try:
-            log.info('Beginning postprocessing for path {path}', {'path': self.path})
+            log.info('Beginning postprocessing for path {path} and resource {resource}', {
+                'path': self.path, 'resource': self.resource_name
+            })
 
             # Push an update to any open Web UIs through the WebSocket
             ws.Message('QueueItemUpdate', self.to_json).push()
 
-            path = self.path or app.TV_DOWNLOAD_DIR
-            process_method = self.process_method or app.PROCESS_METHOD
+            if not self.path and self.resource_name:
+                # We don't have a path, but do have a resource name. If this is a failed download.
+                # Let's use the TV_DOWNLOAD_DIR as path combined with the resource_name.
+                self.path = app.TV_DOWNLOAD_DIR
 
-            process_results = ProcessResult(path, process_method, failed=self.failed)
-            process_results.process(
-                resource_name=self.resource_name,
-                force=self.force,
-                is_priority=self.is_priority,
-                delete_on=self.delete_on,
-                proc_type=self.proc_type,
-                ignore_subs=self.ignore_subs
-            )
-
-            # A user might want to use advanced post-processing, but opt-out of failed download handling.
-            if process_results.failed and app.USE_FAILED_DOWNLOADS:
-                process_results.process_failed(path)
-
-            # In case we have an info_hash or (nzbid), update the history table with the pp results.
-            if self.info_hash:
-                self.update_history(process_results)
+            if self.path:
+                process_results = self.process_path()
+                if process_results._output:
+                    self.to_json.update({'output': process_results._output})
 
             log.info('Completed Postproccessing')
-
-            if process_results._output:
-                self.to_json.update({'output': process_results._output})
 
             # Use success as a flag for a finished PP. PP it self can be succeeded or failed.
             self.success = True
@@ -174,7 +218,7 @@ class PostProcessorRunner(object):
         process_method = kwargs.pop('process_method', app.PROCESS_METHOD)
         failed = kwargs.pop('failed', False)
 
-        if not os.path.isdir(path):
+        if path is None or not os.path.isdir(path):
             result = "Post-processing attempted but directory doesn't exist: {path}"
             log.warning(result, {'path': path})
             return result.format(path=path)
@@ -195,8 +239,9 @@ class PostProcessorRunner(object):
             process_results = ProcessResult(path, process_method, failed=failed)
             process_results.process(force=force, **kwargs)
 
-            # Only initiate failed download handling, if enabled.
-            if process_results.failed and app.USE_FAILED_DOWNLOADS:
+            # Only initiate failed download handling,
+            # if process result has failed and failed download handling is enabled.
+            if process_results.failed:
                 process_results.process_failed(path)
 
             return process_results.output
@@ -209,13 +254,16 @@ class ProcessResult(object):
 
     IGNORED_FOLDERS = ('@eaDir', '#recycle', '.@__thumb',)
 
-    def __init__(self, path, process_method=None, failed=False):
+    def __init__(self, path, process_method=None, failed=False, episodes=[], process_single_resource=False):
         """
         Initialize ProcessResult object.
 
         :param path: The root path to start postprocessing from.
         :param process_method: Process method ('copy', 'move', 'hardlink', 'symlink', 'keeplink').
         :param failed: Start the ProcessResult with a failed download.
+        :param episodes: Array of episode objects.
+            Used to specify the episodes to `Retry` in case of a failed download.
+            Currently only used by the Download Handler.
         """
         self._output = []
         self.directory = path
@@ -223,13 +271,21 @@ class ProcessResult(object):
         self.failed = failed
         self.resource_name = None
         self.result = True
+        # Processing aborted. So we don't want to trigger any failed download handling.
+        # We do want to update the history client status.
+        self.aborted = False
+        # Processing succeeded. Trigger failed downlaod handling and update history client status.
         self.succeeded = True
+        # Processing postponed. Stop postprocessing and don't update history client status.
+        self.postpone_processing = False
         self.missed_files = []
         self.unwanted_files = []
         self.allowed_extensions = app.ALLOWED_EXTENSIONS
         self.process_file = False
         # When multiple media folders/files processed. Flag postpone_any of any them was postponed.
         self.postpone_any = False
+        self.episodes = episodes
+        self.process_single_resource = process_single_resource
 
     @property
     def directory(self):
@@ -250,7 +306,7 @@ class ProcessResult(object):
         # If the client and the application are not on the same machine,
         # translate the directory into a network directory
         elif all([app.TV_DOWNLOAD_DIR, os.path.isdir(app.TV_DOWNLOAD_DIR),
-                  os.path.normpath(path) == os.path.normpath(app.TV_DOWNLOAD_DIR)]):
+                  helpers.real_path(path) == helpers.real_path(app.TV_DOWNLOAD_DIR)]):
             directory = os.path.join(
                 app.TV_DOWNLOAD_DIR,
                 os.path.abspath(path).split(os.path.sep)[-1]
@@ -374,7 +430,7 @@ class ProcessResult(object):
                 self.log_and_output('Missed file: {missed_file}', level=logging.WARNING, **{'missed_file': missed_file})
 
         if all([app.USE_TORRENTS, app.TORRENT_SEED_LOCATION,
-                self.process_method in ('hardlink', 'symlink', 'reflink', 'copy')]):
+                self.process_method in ('hardlink', 'symlink', 'reflink', 'keeplink', 'copy')]):
             for info_hash, release_names in list(iteritems(app.RECENTLY_POSTPROCESSED)):
                 if self.move_torrent(info_hash, release_names):
                     app.RECENTLY_POSTPROCESSED.pop(info_hash, None)
@@ -383,7 +439,6 @@ class ProcessResult(object):
 
     def _clean_up(self, path, proc_type, delete=False):
         """Clean up post-processed folder based on the checks below."""
-        # Always delete files if they are being moved or if it's explicitly wanted
         clean_folder = proc_type == 'manual' and delete
         if self.process_method == 'move' or clean_folder:
 
@@ -393,10 +448,8 @@ class ProcessResult(object):
             if self.unwanted_files:
                 self.delete_files(path, self.unwanted_files)
 
-            if all([not app.NO_DELETE or clean_folder, self.process_method in ('move', 'copy'),
-                    os.path.normpath(path) != os.path.normpath(app.TV_DOWNLOAD_DIR)]):
-
-                check_empty = False if self.process_method == 'copy' else True
+            if (proc_type != 'manual' and not app.NO_DELETE) or clean_folder:
+                check_empty = False if clean_folder else True
                 if self.delete_folder(path, check_empty=check_empty):
                     self.log_and_output('Deleted folder: {path}', level=logging.DEBUG, **{'path': path})
 
@@ -459,7 +512,7 @@ class ProcessResult(object):
         # If resource_name is a file and not an NZB, process it directly
         def walk_path(path_name):
             topdown = True if self.directory == path_name else False
-            for root, dirs, files in os.walk(path, topdown=topdown):
+            for root, dirs, files in os.walk(path_name, topdown=topdown):
                 if files:
                     yield root, sorted(files)
                 if topdown:
@@ -587,10 +640,6 @@ class ProcessResult(object):
 
     def process_files(self, path, force=False, is_priority=None, ignore_subs=False):
         """Post-process and delete the files in a given path."""
-        # TODO: Replace this with something that works for multiple video files
-        if self.resource_name and len(self.video_files) > 1:
-            self.resource_name = None
-
         if self.video_in_rar:
             video_files = set(self.video_files + self.video_in_rar)
 
@@ -625,13 +674,14 @@ class ProcessResult(object):
         :return: True on success, False on failure
         """
         # check if it's a folder
-        if not os.path.isdir(folder):
+        if not folder or not os.path.isdir(folder):
             return False
 
-        # check if it isn't TV_DOWNLOAD_DIR
-        if app.TV_DOWNLOAD_DIR:
-            if helpers.real_path(folder) == helpers.real_path(app.TV_DOWNLOAD_DIR):
-                return False
+        # check if it's a protected folder
+        if helpers.real_path(folder) in (helpers.real_path(app.TV_DOWNLOAD_DIR),
+                                         helpers.real_path(app.DEFAULT_CLIENT_PATH),
+                                         helpers.real_path(app.TORRENT_PATH)):
+            return False
 
         # check if it's empty folder when wanted checked
         if check_empty:
@@ -831,9 +881,11 @@ class ProcessResult(object):
                 processor = post_processor.PostProcessor(file_path, self.resource_name,
                                                          self.process_method, is_priority)
 
-                if app.POSTPONE_IF_NO_SUBS:
+                if app.POSTPONE_IF_NO_SUBS and self.process_single_resource:
                     if not self._process_postponed(processor, file_path, video, ignore_subs):
-                        continue
+                        raise EpisodePostProcessingPostponedException(
+                            f'Postponing processing for file path {file_path} and resource {self.resource_name}'
+                        )
 
                 self.result = processor.process()
                 process_fail_message = ''
@@ -841,17 +893,39 @@ class ProcessResult(object):
                 processor = None
                 self.result = False
                 process_fail_message = ex(error)
+            except EpisodePostProcessingAbortException as error:
+                processor = None
+                self.result = True
+                self.aborted = True
+                process_fail_message = ex(error)
+            except EpisodePostProcessingPostponedException as error:
+                processor = None
+                self.result = True
+                process_fail_message = ex(error)
 
             if processor:
                 self._output += processor._output
 
             if self.result:
-                self.log_and_output('Processing succeeded for {file_path}', **{'file_path': file_path})
+                if self.aborted:
+                    self.log_and_output('Processing aborted for {file_path}: {process_fail_message}',
+                                        level=logging.WARNING, **{'file_path': file_path, 'process_fail_message': process_fail_message})
+                elif self.postpone_processing:
+                    self.log_and_output('Processing postponed for {file_path}: {process_fail_message}',
+                                        level=logging.INFO, **{'file_path': file_path, 'process_fail_message': process_fail_message})
+                else:
+                    self.log_and_output('Processing succeeded for {file_path}', **{'file_path': file_path})
+
             else:
                 self.log_and_output('Processing failed for {file_path}: {process_fail_message}',
                                     level=logging.WARNING, **{'file_path': file_path, 'process_fail_message': process_fail_message})
                 self.missed_files.append('{0}: Processing failed: {1}'.format(file_path, process_fail_message))
                 self.succeeded = False
+
+                if not self.process_single_resource:
+                    # If this PostprocessQueueItem wasn't started through the download handler
+                    # or apiv2 we want to fail the media item right here.
+                    self.process_failed(path, resource_name=video)
 
     def _process_postponed(self, processor, path, video, ignore_subs):
         if not ignore_subs:
@@ -884,10 +958,15 @@ class ProcessResult(object):
                                 'Continuing the post-processing of this file: {video}', **{'video': video})
         return True
 
-    def process_failed(self, path):
+    def process_failed(self, path, resource_name=None):
         """Process a download that did not complete correctly."""
+        if not app.USE_FAILED_DOWNLOADS:
+            return
+
         try:
-            processor = failed_processor.FailedProcessor(path, self.resource_name)
+            processor = failed_processor.FailedProcessor(
+                path, resource_name or self.resource_name, self.episodes
+            )
             self.result = processor.process()
             process_fail_message = ''
         except FailedPostProcessingFailedException as error:
@@ -923,7 +1002,7 @@ class ProcessResult(object):
                 continue
 
             try:
-                parse_result = NameParser().parse(name)
+                parse_result = NameParser().parse(name, use_cache=False)
                 if parse_result.series.indexerid:
                     main_db_con = db.DBConnection()
                     sql_results = main_db_con.select('SELECT subtitles FROM tv_shows WHERE indexer = ? AND indexer_id = ? LIMIT 1',

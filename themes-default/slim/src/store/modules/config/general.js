@@ -1,4 +1,3 @@
-import { api, apiRoute } from '../../../api';
 import { ADD_CONFIG } from '../../mutation-types';
 import { arrayUnique, arrayExclude } from '../../../utils/core';
 
@@ -9,9 +8,7 @@ const state = {
     namingForceFolders: null,
     sourceUrl: null,
     rootDirs: [],
-    subtitles: {
-        enabled: null
-    },
+    brokenProviders: [],
     logs: {
         debug: null,
         dbDebug: null,
@@ -26,7 +23,6 @@ const state = {
         custom: {}
     },
     cpuPreset: null,
-    subtitlesMulti: null,
     anonRedirect: null,
     recentShows: [],
     randomShowSlug: null, // @TODO: Recreate this in Vue when the webapp has a reliable list of shows to choose from.
@@ -52,6 +48,20 @@ const state = {
         notifications: null,
         timeout: null
     },
+    recommended: {
+        cache: {
+            shows: null,
+            trakt: null,
+            imdb: null,
+            anidb: null,
+            anilist: null,
+            purgeAfterDays: null
+        },
+        trakt: {
+            selectedLists: [],
+            availableLists: []
+        }
+    },
     versionNotify: null,
     autoUpdate: null,
     updateFrequency: null,
@@ -65,6 +75,7 @@ const state = {
         username: null,
         password: null,
         port: null,
+        host: null,
         notifyOnLogin: null,
         ipv6: null,
         httpsEnable: null,
@@ -105,7 +116,17 @@ const state = {
         period: null
     },
     // Remove themeName when we get fully rid of MEDUSA.config.
-    themeName: null
+    themeName: null,
+    providers: {
+        prowlarr: {
+            url: null,
+            apikey: null
+        }
+    },
+    backup: {
+        cacheDb: null,
+        cacheFiles: null
+    }
 };
 
 const mutations = {
@@ -122,6 +143,9 @@ const mutations = {
 
         state.recentShows.unshift(show); // Add the new show object to the start of the array.
         state.recentShows = state.recentShows.slice(0, 5); // Cut the array of at 5 items.
+    },
+    updateTraktSelectedLists(state, selectedLists) {
+        state.recommended.trakt.selectedLists = selectedLists;
     }
 };
 
@@ -145,9 +169,8 @@ const getters = {
 };
 
 const actions = {
-    getConfig(context, section) {
-        const { commit } = context;
-        return api.get('/config/' + (section || '')).then(res => {
+    getConfig({ rootState, commit }, section) {
+        return rootState.auth.client.api.get('/config/' + (section || '')).then(res => {
             if (section) {
                 const config = res.data;
                 commit(ADD_CONFIG, { section, config });
@@ -162,39 +185,43 @@ const actions = {
             return sections;
         });
     },
-    setConfig(context, { section, config }) {
-        return api.patch(`config/${section}`, config);
+    setConfig({ rootState }, { section, config }) {
+        return rootState.auth.client.api.patch(`config/${section}`, config);
     },
-    updateConfig(context, { section, config }) {
-        const { commit } = context;
+    updateConfig({ commit }, { section, config }) {
         return commit(ADD_CONFIG, { section, config });
     },
-    getApiKey(context) {
-        const { commit } = context;
+    getApiKey({ rootState, commit }) {
         const section = 'main';
         const config = { webInterface: { apiKey: '' } };
-        return apiRoute.get('config/general/generate_api_key')
+        return rootState.auth.client.apiRoute.get('config/general/generate_api_key')
             .then(response => {
                 config.webInterface.apiKey = response.data;
                 return commit(ADD_CONFIG, { section, config });
             });
     },
-    setRecentShow({ commit, state }, show) {
+    setRecentShow({ rootState, commit, state }, show) {
         commit('addRecentShow', { show });
         const config = {
             recentShows: state.recentShows
         };
-        return api.patch('config/main', config);
+        return rootState.auth.client.api.patch('config/main', config);
     },
-    setCustomLogs({ commit }, logs) {
+    setCustomLogs({ rootState, commit }, logs) {
         // Convert back to object.
         const reducedLogs = logs.reduce((obj, item) => ({ ...obj, [item.identifier]: item.level }), {});
 
-        return api.patch('config/main', { logs: { custom: logs } })
+        return rootState.auth.client.api.patch('config/main', { logs: { custom: logs } })
             .then(() => {
                 return commit(ADD_CONFIG, {
                     section: 'main', config: { logs: { custom: reducedLogs } }
                 });
+            });
+    },
+    setTraktSelectedLists({ rootState, commit }, selectedLists) {
+        return rootState.auth.client.api.patch('config/main', { recommended: { trakt: { selectedLists } } })
+            .then(() => {
+                return commit('updateTraktSelectedLists', selectedLists);
             });
     }
 };

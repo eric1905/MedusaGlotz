@@ -1,7 +1,7 @@
 <template>
     <div id="snatch-selection-template">
         <vue-snotify />
-        <backstretch v-if="show.id.slug" :slug="show.id.slug" />
+        <backstretch v-if="show.id.slug" :slug="show.id.slug" :key="show.id.slug" />
 
         <show-header type="snatch-selection"
                      ref="show-header"
@@ -86,8 +86,7 @@ export default {
     },
     methods: {
         ...mapActions({
-            getShow: 'getShow', // Map `this.getShow()` to `this.$store.dispatch('getShow')`
-            getHistory: 'getHistory'
+            getShow: 'getShow'
         }),
         // TODO: Move this to show-results!
         getReleaseNameClasses(name) {
@@ -134,5 +133,8 @@ export default {
 };
 </script>
 
-<style scoped src='../style/vgt-table.css'>
+<style scoped>
+.show-history {
+    margin-bottom: 10px;
+}
 </style>

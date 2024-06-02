@@ -1,3 +1,5 @@
+const AUTHENTICATE = '🔒 Authenticating';
+const CONNECT = '🔒 🔗 Connected';
 const LOGIN_PENDING = '🔒 Logging in';
 const LOGIN_SUCCESS = '🔒 ✅ Login Successful';
 const LOGIN_FAILED = '🔒 ❌ Login Failed';
@@ -20,21 +22,35 @@ const ADD_SHOW_CONFIG = '📺 Show config updated in store';
 const ADD_SHOWS = '📺 Multiple Shows added to store in bulk';
 const ADD_SHOW_EPISODE = '📺 Shows season with episodes added to store';
 const ADD_STATS = 'ℹ️ Statistics added to store';
+const ADD_RECOMMENDED_SHOW = '📺 Recommended Show added to store';
+const SET_RECOMMENDED_SHOWS = '📺 Recommended Shows added to store';
+const SET_RECOMMENDED_SHOWS_TRAKT_REMOVED = '📺 Recommended Show Trakt removed added to store';
+const SET_RECOMMENDED_SHOWS_CATEGORIES = '📺 Recommended Show categories added to store';
 const SET_STATS = 'SET_STATS';
 const SET_MAX_DOWNLOAD_COUNT = 'SET_MAX_DOWNLOAD_COUNT';
 const ADD_SHOW_SCENE_EXCEPTION = '📺 Add a scene exception';
 const REMOVE_SHOW_SCENE_EXCEPTION = '📺 Remove a scene exception';
+const REMOVE_SHOW_CONFIG_TEMPLATE = '📺 Remove a shows search template';
 const ADD_HISTORY = '📺 History added to store';
+const ADD_HISTORY_ROW = '📺 History row added to store';
+const ADD_SHOW_CONFIG_TEMPLATE = '📺 Search template added to shows templates';
 const ADD_SHOW_HISTORY = '📺 Show specific History added to store';
 const ADD_SHOW_EPISODE_HISTORY = "📺 Show's episode specific History added to store";
+const ADD_PROVIDER = '⛽ Provider added to store';
 const ADD_PROVIDERS = '⛽ Provider list added to store';
 const ADD_PROVIDER_CACHE = '⛽ Provider cache results added to store';
 const ADD_SEARCH_RESULTS = '⛽ New search results added for provider';
 const ADD_QUEUE_ITEM = '🔍 Search queue item updated';
+const SET_LAST_ITEM = '🔍 Search queue item set for last item';
 const ADD_SHOW_QUEUE_ITEM = '📺 Show queue item added to store';
+const REMOVE_SHOW = '📺 Show removed from store';
+const REMOVE_PROVIDER = '⛽ Provider removed';
 const UPDATE_SHOWLIST_DEFAULT = '⚙️ Anime config showlist default updated';
+const ADD_SCHEDULE = '📅 Schedule information added';
 
 export {
+    AUTHENTICATE,
+    CONNECT,
     LOGIN_PENDING,
     LOGIN_SUCCESS,
     LOGIN_FAILED,
@@ -52,22 +68,34 @@ export {
     ADD_CONFIG,
     UPDATE_LAYOUT_LOCAL,
     ADD_HISTORY,
+    ADD_HISTORY_ROW,
     ADD_SHOW,
+    ADD_STATS,
     ADD_SHOW_CONFIG,
+    ADD_RECOMMENDED_SHOW,
+    SET_RECOMMENDED_SHOWS,
+    SET_RECOMMENDED_SHOWS_TRAKT_REMOVED,
+    SET_RECOMMENDED_SHOWS_CATEGORIES,
     ADD_SHOWS,
     ADD_SHOW_EPISODE,
-    ADD_STATS,
     ADD_REMOTE_BRANCHES,
     SET_STATS,
     SET_MAX_DOWNLOAD_COUNT,
     ADD_SHOW_SCENE_EXCEPTION,
     REMOVE_SHOW_SCENE_EXCEPTION,
+    REMOVE_SHOW_CONFIG_TEMPLATE,
     ADD_SHOW_HISTORY,
     ADD_SHOW_EPISODE_HISTORY,
+    ADD_PROVIDER,
     ADD_PROVIDERS,
     ADD_PROVIDER_CACHE,
     ADD_SEARCH_RESULTS,
     ADD_QUEUE_ITEM,
+    SET_LAST_ITEM,
     ADD_SHOW_QUEUE_ITEM,
-    UPDATE_SHOWLIST_DEFAULT
+    REMOVE_SHOW,
+    REMOVE_PROVIDER,
+    UPDATE_SHOWLIST_DEFAULT,
+    ADD_SHOW_CONFIG_TEMPLATE,
+    ADD_SCHEDULE
 };

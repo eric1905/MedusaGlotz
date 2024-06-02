@@ -45,6 +45,9 @@ home.mako
 /* =======================================================================
 displayShow.mako
 ========================================================================== */
+.snatchTitle {
+    color: rgb(0, 0, 0) !important;
+}
 
 .displayShowTable th.row-seasonheader {
     border: none !important;
@@ -60,10 +63,6 @@ displayShow.mako
     color: rgb(0, 0, 0) !important;
     padding-top: 15px !important;
     text-align: left !important;
-}
-
-.snatchTitle {
-    color: rgb(0, 0, 0) !important;
 }
 
 /* =======================================================================

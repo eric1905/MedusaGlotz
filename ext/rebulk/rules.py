@@ -35,7 +35,6 @@ class Consequence(metaclass=ABCMeta):
         :return: True if the action was runned, False if it wasn't.
         :rtype: bool
         """
-        pass
 
 
 class Condition(metaclass=ABCMeta):
@@ -54,14 +53,13 @@ class Condition(metaclass=ABCMeta):
         :return: truthy if rule should be triggered and execute then action, falsy if it should not.
         :rtype: object
         """
-        pass
 
 
 class CustomRule(Condition, Consequence, metaclass=ABCMeta):
     """
     Definition of a rule to apply
     """
-    # pylint: disable=no-self-use, unused-argument, abstract-method
+    # pylint: disable=unused-argument, abstract-method
     priority = 0
     name = None
     dependency = None
@@ -89,8 +87,8 @@ class CustomRule(Condition, Consequence, metaclass=ABCMeta):
     def __repr__(self):
         defined = ""
         if self.defined_at:
-            defined = "@%s" % (self.defined_at,)
-        return "<%s%s>" % (self.name if self.name else self.__class__.__name__, defined)
+            defined = f"@{self.defined_at}"
+        return f"<{self.name if self.name else self.__class__.__name__}{defined}>"
 
     def __eq__(self, other):
         return self.__class__ == other.__class__
@@ -351,7 +349,7 @@ def toposort_rules(rules):
     class_dict = {}
     for rule in rules:
         if rule.__class__ in class_dict:
-            raise ValueError("Duplicate class rules are not allowed: %s" % rule.__class__)
+            raise ValueError(f"Duplicate class rules are not allowed: {rule.__class__}")
         class_dict[rule.__class__] = rule
     for rule in rules:
         if not is_iterable(rule.dependency) and rule.dependency:

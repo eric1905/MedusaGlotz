@@ -1,22 +1,28 @@
 # -*- coding: utf-8 -*-
 """Interfaces to all of the Movie objects offered by the Trakt.tv API"""
-from collections import namedtuple
-from trakt.core import Alias, Comment, Genre, get, delete
-from trakt.sync import (Scrobbler, comment, rate, add_to_history,
-                        remove_from_history, add_to_watchlist,
-                        remove_from_watchlist, add_to_collection,
-                        remove_from_collection, search, checkin_media,
-                        delete_checkin)
+from typing import NamedTuple
+
+from trakt.core import Alias, Comment, Genre, delete, get
+from trakt.mixins import IdsMixin
 from trakt.people import Person
-from trakt.utils import slugify, now, extract_ids, unicode_safe
+from trakt.sync import (Scrobbler, add_to_collection, add_to_history,
+                        add_to_watchlist, checkin_media, comment,
+                        delete_checkin, rate, remove_from_collection,
+                        remove_from_history, remove_from_watchlist, search)
+from trakt.utils import now, slugify
 
 __author__ = 'Jon Nappi'
 __all__ = ['dismiss_recommendation', 'get_recommended_movies', 'genres',
            'trending_movies', 'updated_movies', 'Release', 'Movie',
            'Translation']
 
-Translation = namedtuple('Translation', ['title', 'overview', 'tagline',
-                                         'language'])
+
+# FIXME: same symbol in tv module
+class Translation(NamedTuple):
+    title: str
+    overview: str
+    tagline: str
+    language: str
 
 
 @delete
@@ -36,7 +42,6 @@ def get_recommended_movies():
     data = yield 'recommendations/movies'
     movies = []
     for movie in data:
-        extract_ids(movie)
         movies.append(Movie(**movie))
     yield movies
 
@@ -71,20 +76,23 @@ def updated_movies(timestamp=None):
     to_ret = []
     for movie in data:
         mov = movie.pop('movie')
-        extract_ids(mov)
         mov.update({'updated_at': movie.pop('updated_at')})
         to_ret.append(Movie(**mov))
     yield to_ret
 
 
-Release = namedtuple('Release', ['country', 'certification', 'release_date',
-                                 'note', 'release_type'])
+class Release(NamedTuple):
+    country: str
+    certification: str
+    release_date: str
+    note: str
+    release_type: str
 
 
-class Movie(object):
+class Movie(IdsMixin):
     """A Class representing a Movie object"""
     def __init__(self, title, year=None, slug=None, **kwargs):
-        super(Movie, self).__init__()
+        super().__init__()
         self.media_type = 'movies'
         self.title = title
         self.year = int(year) if year is not None else year
@@ -93,21 +101,21 @@ class Movie(object):
         else:
             self.slug = slug or slugify(self.title)
 
-        self.released = self.tmdb_id = self.imdb_id = self.duration = None
-        self.trakt_id = self.tagline = self.overview = self.runtime = None
         self.updated_at = self.trailer = self.homepage = self.rating = None
         self.votes = self.language = self.available_translations = None
         self.genres = self.certification = None
         self._comments = self._images = self._aliases = self._people = None
         self._ratings = self._releases = self._translations = None
+        self.tmdb_id = self.imdb_id = None  # @deprecated: unused
+        self.trakt_id = None  # @deprecated: unused
 
         if len(kwargs) > 0:
             self._build(kwargs)
         else:
             self._get()
 
-    @classmethod
-    def search(cls, title, year=None):
+    @staticmethod
+    def search(title, year=None):
         """Perform a search for a movie with a title matching *title*
 
         :param title: The title to search for
@@ -125,7 +133,6 @@ class Movie(object):
 
     def _build(self, data):
         """Build this :class:`Movie` object with the data in *data*"""
-        extract_ids(data)
         for key, val in data.items():
             if hasattr(self, '_' + key):
                 setattr(self, '_' + key, val)
@@ -155,7 +162,7 @@ class Movie(object):
         they go by their alternate titles
         """
         if self._aliases is None:
-            data = yield (self.ext + '/aliases')
+            data = yield self.ext + '/aliases'
             self._aliases = [Alias(**alias) for alias in data]
         yield self._aliases
 
@@ -172,7 +179,7 @@ class Movie(object):
         """
         # TODO (jnappi) Pagination
         from trakt.users import User
-        data = yield (self.ext + '/comments')
+        data = yield self.ext + '/comments'
         self._comments = []
         for com in data:
             user = User(**com.get('user'))
@@ -185,14 +192,6 @@ class Movie(object):
     def crew(self):
         """All of the crew members that worked on this :class:`Movie`"""
         return [p for p in self.people if getattr(p, 'job')]
-
-    @property
-    def ids(self):
-        """Accessor to the trakt, imdb, and tmdb ids, as well as the trakt.tv
-        slug
-        """
-        return {'ids': {'trakt': self.trakt, 'slug': self.slug,
-                        'imdb': self.imdb, 'tmdb': self.tmdb}}
 
     @property
     @get
@@ -210,7 +209,7 @@ class Movie(object):
         :class:`Movie`, including both cast and crew
         """
         if self._people is None:
-            data = yield (self.ext + '/people')
+            data = yield self.ext + '/people'
             crew = data.get('crew', {})
             cast = []
             for c in data.get('cast', []):
@@ -232,14 +231,14 @@ class Movie(object):
     def ratings(self):
         """Ratings (between 0 and 10) and distribution for a movie."""
         if self._ratings is None:
-            self._ratings = yield (self.ext + '/ratings')
+            self._ratings = yield self.ext + '/ratings'
         yield self._ratings
 
     @property
     @get
     def related(self):
         """The top 10 :class:`Movie`'s related to this :class:`Movie`"""
-        data = yield (self.ext + '/related')
+        data = yield self.ext + '/related'
         movies = []
         for movie in data:
             movies.append(Movie(**movie))
@@ -258,16 +257,16 @@ class Movie(object):
 
     def add_to_library(self):
         """Add this :class:`Movie` to your library."""
-        add_to_collection(self)
+        return add_to_collection(self)
     add_to_collection = add_to_library
 
     def add_to_watchlist(self):
         """Add this :class:`Movie` to your watchlist"""
-        add_to_watchlist(self)
+        return add_to_watchlist(self)
 
     def comment(self, comment_body, spoiler=False, review=False):
         """Add a comment (shout or review) to this :class:`Move` on trakt."""
-        comment(self, comment_body, spoiler, review)
+        return comment(self, comment_body, spoiler, review)
 
     def dismiss(self):
         """Dismiss this movie from showing up in Movie Recommendations"""
@@ -305,28 +304,28 @@ class Movie(object):
     def mark_as_seen(self, watched_at=None):
         """Add this :class:`Movie`, watched outside of trakt, to your library.
         """
-        add_to_history(self, watched_at)
+        return add_to_history(self, watched_at)
 
     def mark_as_unseen(self):
         """Remove this :class:`Movie`, watched outside of trakt, from your
         library.
         """
-        remove_from_history(self)
+        return remove_from_history(self)
 
     def rate(self, rating):
         """Rate this :class:`Movie` on trakt. Depending on the current users
         settings, this may also send out social updates to facebook, twitter,
         tumblr, and path.
         """
-        rate(self, rating)
+        return rate(self, rating)
 
     def remove_from_library(self):
         """Remove this :class:`Movie` from your library."""
-        remove_from_collection(self)
+        return remove_from_collection(self)
     remove_from_collection = remove_from_library
 
     def remove_from_watchlist(self):
-        remove_from_watchlist(self)
+        return remove_from_watchlist(self)
 
     def scrobble(self, progress, app_version, app_date):
         """Notify trakt that the current user has finished watching a movie.
@@ -358,10 +357,11 @@ class Movie(object):
         :param sharing: Control sharing to any connected social networks.
         :param venue_id: Foursquare venue ID.
         :param venue_name: Foursquare venue name.
+        :param delete: If True, the checkin will be deleted.
         """
         if delete:
             delete_checkin()
-        checkin_media(self, app_version, app_date, message, sharing, venue_id,
+        return checkin_media(self, app_version, app_date, message, sharing, venue_id,
                       venue_name)
 
     def to_json_singular(self):
@@ -376,5 +376,5 @@ class Movie(object):
 
     def __str__(self):
         """String representation of a :class:`Movie`"""
-        return '<Movie>: {}'.format(unicode_safe(self.title))
+        return '<Movie>: {}'.format(self.title)
     __repr__ = __str__

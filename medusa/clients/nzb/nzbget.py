@@ -7,11 +7,13 @@ import logging
 import socket
 from base64 import standard_b64encode
 from contextlib import suppress
+from urllib.parse import quote
 from xmlrpc.client import Error, ProtocolError, ServerProxy
 
 from medusa import app
 from medusa.common import Quality
 from medusa.helper.common import try_int
+from medusa.helper.exceptions import DownloadClientConnectionException
 from medusa.logger.adapters.style import BraceAdapter
 
 import ttl_cache
@@ -30,33 +32,42 @@ def nzb_connection(url):
     nzb_get_rpc = ServerProxy(url)
     try:
         if nzb_get_rpc.writelog('INFO', 'Medusa connected to test connection.'):
-            log.debug('Successfully connected to NZBget')
+            msg = 'Successfully connected to NZBget'
+            log.debug(msg)
         else:
-            log.warning('Successfully connected to NZBget but unable to'
-                        ' send a message')
-        return True
+            msg = 'Successfully connected to NZBget but unable to send a message'
+            log.warning(msg)
+
+        return True, msg
 
     except ProtocolError as error:
         if error.errmsg == 'Unauthorized':
-            log.warning('NZBget username or password is incorrect.')
+            msg = 'NZBget username or password is incorrect.'
+            log.warning(msg)
         else:
-            log.error('Protocol Error: {msg}', {'msg': error.errmsg})
-        return False
+            msg = f'Protocol Error: {error.errmsg}'
+            log.error(msg)
+
+        return False, msg
 
     except Error as error:
-        log.warning('Please check your NZBget host and port (if it is running).'
-                    ' NZBget is not responding to this combination.'
-                    ' Error: {msg}', {'msg': error.errmsg})
-        return False
+        msg = ('Please check your NZBget host and port (if it is running).'
+               ' NZBget is not responding to this combination.'
+               f' Error: {error}')
+        log.warning(msg)
+
+        return False, msg
 
     except socket.error as error:
-        log.warning('Please check your NZBget host and port (if it is running).'
-                    ' NZBget is not responding to this combination.'
-                    ' Socket Error: {msg}', {'msg': error})
-        return False
+        msg = ('Please check your NZBget host and port (if it is running).'
+               ' NZBget is not responding to this combination.'
+               f' Socket Error: {error}')
+        log.warning(msg)
+
+        return False, msg
 
 
-def test_authentication(host, username, password, use_https):
+def test_authentication(host=None, username=None, password=None, use_https=False):
     """
     Test NZBget client connection.
 
@@ -69,9 +80,9 @@ def test_authentication(host, username, password, use_https):
     """
     url = 'http{}://{}:{}@{}/xmlrpc'.format(
         's' if use_https or app.NZBGET_USE_HTTPS else '',
-        username or app.NZBGET_USERNAME,
-        password or app.NZBGET_PASSWORD,
-        host or app.NZBGET_HOST
+        quote(username or app.NZBGET_USERNAME, safe=''),
+        quote(password or app.NZBGET_PASSWORD, safe=''),
+        quote(host or app.NZBGET_HOST, safe='/:')
     )
 
     return nzb_connection(url)
@@ -96,9 +107,10 @@ def send_nzb(nzb, proper=False):
 
     url = 'http{}://{}:{}@{}/xmlrpc'.format(
         's' if app.NZBGET_USE_HTTPS else '',
-        app.NZBGET_USERNAME,
-        app.NZBGET_PASSWORD,
-        app.NZBGET_HOST)
+        quote(app.NZBGET_USERNAME, safe=''),
+        quote(app.NZBGET_PASSWORD, safe=''),
+        quote(app.NZBGET_HOST, safe='/:')
+    )
 
     if not nzb_connection(url):
         return False
@@ -191,16 +203,19 @@ def _get_nzb_queue():
     """Return a list of all groups (nzbs) currently being donloaded or postprocessed."""
     url = 'http{}://{}:{}@{}/xmlrpc'.format(
         's' if app.NZBGET_USE_HTTPS else '',
-        app.NZBGET_USERNAME,
-        app.NZBGET_PASSWORD,
-        app.NZBGET_HOST
+        quote(app.NZBGET_USERNAME, safe=''),
+        quote(app.NZBGET_PASSWORD, safe=''),
+        quote(app.NZBGET_HOST, safe='/:')
     )
 
     if not nzb_connection(url):
-        return False
+        raise DownloadClientConnectionException('Error while fetching nzbget queue')
 
     nzb_get_rpc = ServerProxy(url)
-    nzb_groups = nzb_get_rpc.listgroups()
+    try:
+        nzb_groups = nzb_get_rpc.listgroups()
+    except ConnectionRefusedError as error:
+        raise DownloadClientConnectionException(f'Error while fetching nzbget history. Error: {error}')
 
     return nzb_groups
 
@@ -210,16 +225,19 @@ def _get_nzb_history():
     """Return a list of all groups (nzbs) from history."""
     url = 'http{}://{}:{}@{}/xmlrpc'.format(
         's' if app.NZBGET_USE_HTTPS else '',
-        app.NZBGET_USERNAME,
-        app.NZBGET_PASSWORD,
-        app.NZBGET_HOST
+        quote(app.NZBGET_USERNAME, safe=''),
+        quote(app.NZBGET_PASSWORD, safe=''),
+        quote(app.NZBGET_HOST, safe='/:')
     )
 
     if not nzb_connection(url):
-        return False
+        raise DownloadClientConnectionException('Error while fetching nzbget history')
 
     nzb_get_rpc = ServerProxy(url)
-    nzb_groups = nzb_get_rpc.history()
+    try:
+        nzb_groups = nzb_get_rpc.history()
+    except ConnectionRefusedError as error:
+        raise DownloadClientConnectionException(f'Error while fetching nzbget history. Error: {error}')
 
     return nzb_groups
 
